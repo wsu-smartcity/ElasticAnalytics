@@ -1,0 +1,105 @@
+
+Successful Kibana INDEX_NAME/_search query:
+	)üÅ|r^fE?@À¨À¨[P©#e;«(PÆPOST /api/console/proxy?path=netflow-v5-2017.10.11%2F_search%2F%3Fscroll%3D5m&method=POST HTTP/1.1
+	Host: 192.168.0.91
+	User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:60.0) Gecko/20100101 Firefox/60.0
+	Accept: text/plain, */*; q=0.01
+	Accept-Language: en-US,en;q=0.5
+	Accept-Encoding: gzip, deflate
+	Referer: http://192.168.0.91/app/kibana
+	kbn-version: 5.6.3
+	Content-Type: application/json
+	Content-Length: 41
+	DNT: 1
+	Connection: keep-alive
+
+	{
+	  "query": {
+		"match_all": {}
+	  }
+	}
+
+Successful Kibana _search/scroll query:
+
+	)üÅ|r^fE8:@À¨À¨[P¨ëeÿâPäPOST /api/console/proxy?path=_search%2Fscroll&method=POST HTTP/1.1
+
+	Host: 192.168.0.91
+	User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:60.0) Gecko/20100101 Firefox/60.0
+	Accept: text/plain, */*; q=0.01
+	Accept-Language: en-US,en;q=0.5
+	Accept-Encoding: gzip, deflate
+	Referer: http://192.168.0.91/app/kibana
+	kbn-version: 5.6.3
+	Content-Type: application/json
+	Content-Length: 102
+	DNT: 1
+	Connection: keep-alive
+
+	{
+	  "scroll":"5m",
+	  "scroll_id":"DXF1ZXJ5QW5kRmV0Y2gBAAAAAAAQkwIWR25VNkxzVjFTSVNubDRCdEoyTnFXQQ=="
+	}
+
+)üÅ|r^fE
+v@À¨À¨[´Peu-ê5çmAPÆGET /elasticsearch/_search/scroll HTTP/1.1
+Host: 192.168.0.91
+Content-Length: 97
+accept-language: en-US,en;q=0.5
+accept-encoding: gzip, deflate
+kbn-version: 5.6.3
+accept: text/plain, */*; q=0.01
+user-agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:60.0) Gecko/20100101 Firefox/60.0
+dnt: 1
+connection: keep-alive
+referer: http://192.168.0.91/app/kibana
+content-type: application/json
+
+{"scroll_id": "DXF1ZXJ5QW5kRmV0Y2gBAAAAAAAQvUIWR25VNkxzVjFTSVNubDRCdEoyTnFXQQ==", "scroll": "5m"}
+
+Failed python elastic client _search/scroll query :
+		
+		)üÅ|r^fE2cö@À¨À¨[¦PÈ0á½~ÌPÿÞGET /elasticsearch/_search/scroll HTTP/1.1
+		Host: 192.168.0.91
+		Accept-Encoding: identity
+		Content-Length: 97
+		connection: keep-alive
+		content-type: application/json
+
+		{"scroll_id": "DXF1ZXJ5QW5kRmV0Y2gBAAAAAAAQmFMWR25VNkxzVjFTSVNubDRCdEoyTnFXQQ==", "scroll": "5m"}
+		
+		
+		
+		
+		
+		
+		
+		
+Successful my-client aggs query:
+	)üÅ|r^fEÖF@À¨À¨[3ôPÁ»YþjPPOST /elasticsearch/netflow-v5-2017.10.11/_search HTTP/1.1
+	Host: 192.168.0.91
+	Connection: keep-alive
+	Accept-Encoding: gzip, deflate
+	Accept: */*
+	User-Agent: python-requests/2.19.1
+	kbn-xsrf: reporting
+	content-type: application/json
+	kbn-version: 5.6.3
+	Content-Length: 149
+
+	{"aggs": {"dst_addr": {"terms": {"field": "netflow.ipv4_dst_addr"}, "aggs": {"src_addr": {"terms": {"field": "netflow.ipv4_src_addr"}}}}}, "size": 0}		
+		
+Unsuccessful client query to aggs:
+	)üÅ|r^fEîE@À¨À¨[3áP!Òf*PGET /elasticsearch/netflow-v5-2017.10.11/_search HTTP/1.1
+	Host: 192.168.0.91
+	Content-Length: 149
+	accept-language: en-US,en;q=0.5
+	accept-encoding: gzip, deflate
+	kbn-version: 5.6.3
+	accept: text/plain, */*; q=0.01
+	dnt: 1
+	connection: keep-alive
+	content-type: application/json
+	kbn-xsrf: reporting
+
+	{"aggs": {"dst_addr": {"terms": {"field": "netflow.ipv4_dst_addr"}, "aggs": {"src_addr": {"terms": {"field": "netflow.ipv4_src_addr"}}}}}, "size": 0}	
+	

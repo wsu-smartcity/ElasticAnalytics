@@ -1,0 +1,797 @@
+{
+  "took": 400,
+  "timed_out": false,
+  "num_reduce_phases": 2,
+  "_shards": {
+    "total": 798,
+    "successful": 594,
+    "skipped": 0,
+    "failed": 204,
+    "failures": [
+      {
+        "shard": 0,
+        "index": "netflow-v9-1970.01.02",
+        "node": "GnU6LsV1SISnl4BtJ2NqWA",
+        "reason": {
+          "type": "illegal_state_exception",
+          "reason": "unexpected docvalues type NONE for field 'netflow.ipv4_dst_addr' (expected one of [SORTED_NUMERIC, NUMERIC]). Re-index with correct docvalues type."
+        }
+      },
+      {
+        "shard": 0,
+        "index": "netflow-v9-2018.05.30",
+        "node": "GnU6LsV1SISnl4BtJ2NqWA",
+        "reason": {
+          "type": "illegal_argument_exception",
+          "reason": "Fielddata is disabled on text fields by default. Set fielddata=true on [netflow.ipv4_dst_addr] in order to load fielddata in memory by uninverting the inverted index. Note that this can however use significant memory. Alternatively use a keyword field instead."
+        }
+      }
+    ]
+  },
+  "hits": {
+    "total": 3919865,
+    "max_score": 1,
+    "hits": [
+      {
+        "_index": "netflow-v5-2017.10.11",
+        "_type": "logs",
+        "_id": "AV8LhQqZyn_BE1UV4cVV",
+        "_score": 1,
+        "_source": {
+          "@timestamp": "2017-10-11T13:13:15.000Z",
+          "netflow": {
+            "version": 5,
+            "flow_seq_num": 0,
+            "engine_type": 0,
+            "engine_id": 187,
+            "sampling_algorithm": 0,
+            "sampling_interval": 0,
+            "flow_records": 30,
+            "ipv4_src_addr": "192.168.2.10",
+            "ipv4_dst_addr": "239.255.255.250",
+            "ipv4_next_hop": "0.0.0.0",
+            "input_snmp": 0,
+            "output_snmp": 0,
+            "in_pkts": 4,
+            "in_bytes": 608,
+            "first_switched": "2017-10-11T13:12:30.999Z",
+            "last_switched": "2017-10-11T13:12:33.999Z",
+            "l4_src_port": 49154,
+            "l4_dst_port": 1900,
+            "tcp_flags": 0,
+            "protocol": 17,
+            "src_tos": 0,
+            "src_as": 0,
+            "dst_as": 0,
+            "src_mask": 0,
+            "dst_mask": 0
+          },
+          "@version": "1",
+          "host": "192.168.0.14"
+        }
+      },
+      {
+        "_index": "netflow-v5-2017.10.11",
+        "_type": "logs",
+        "_id": "AV8LhQqZyn_BE1UV4cVW",
+        "_score": 1,
+        "_source": {
+          "@timestamp": "2017-10-11T13:13:15.000Z",
+          "netflow": {
+            "version": 5,
+            "flow_seq_num": 0,
+            "engine_type": 0,
+            "engine_id": 187,
+            "sampling_algorithm": 0,
+            "sampling_interval": 0,
+            "flow_records": 30,
+            "ipv4_src_addr": "192.168.0.14",
+            "ipv4_dst_addr": "192.168.0.1",
+            "ipv4_next_hop": "0.0.0.0",
+            "input_snmp": 0,
+            "output_snmp": 0,
+            "in_pkts": 1,
+            "in_bytes": 82,
+            "first_switched": "2017-10-11T13:12:34.999Z",
+            "last_switched": "2017-10-11T13:12:34.999Z",
+            "l4_src_port": 50748,
+            "l4_dst_port": 53,
+            "tcp_flags": 0,
+            "protocol": 17,
+            "src_tos": 0,
+            "src_as": 0,
+            "dst_as": 0,
+            "src_mask": 0,
+            "dst_mask": 0
+          },
+          "@version": "1",
+          "host": "192.168.0.14"
+        }
+      },
+      {
+        "_index": "netflow-v5-2017.10.11",
+        "_type": "logs",
+        "_id": "AV8LhQqZyn_BE1UV4cVX",
+        "_score": 1,
+        "_source": {
+          "@timestamp": "2017-10-11T13:13:15.000Z",
+          "netflow": {
+            "version": 5,
+            "flow_seq_num": 0,
+            "engine_type": 0,
+            "engine_id": 187,
+            "sampling_algorithm": 0,
+            "sampling_interval": 0,
+            "flow_records": 30,
+            "ipv4_src_addr": "192.168.0.1",
+            "ipv4_dst_addr": "192.168.0.14",
+            "ipv4_next_hop": "0.0.0.0",
+            "input_snmp": 0,
+            "output_snmp": 0,
+            "in_pkts": 1,
+            "in_bytes": 157,
+            "first_switched": "2017-10-11T13:12:34.999Z",
+            "last_switched": "2017-10-11T13:12:34.999Z",
+            "l4_src_port": 53,
+            "l4_dst_port": 50748,
+            "tcp_flags": 0,
+            "protocol": 17,
+            "src_tos": 0,
+            "src_as": 0,
+            "dst_as": 0,
+            "src_mask": 0,
+            "dst_mask": 0
+          },
+          "@version": "1",
+          "host": "192.168.0.14"
+        }
+      },
+      {
+        "_index": "netflow-v5-2017.10.11",
+        "_type": "logs",
+        "_id": "AV8LhQqZyn_BE1UV4cVY",
+        "_score": 1,
+        "_source": {
+          "@timestamp": "2017-10-11T13:13:15.000Z",
+          "netflow": {
+            "version": 5,
+            "flow_seq_num": 0,
+            "engine_type": 0,
+            "engine_id": 187,
+            "sampling_algorithm": 0,
+            "sampling_interval": 0,
+            "flow_records": 30,
+            "ipv4_src_addr": "192.168.0.14",
+            "ipv4_dst_addr": "192.168.0.1",
+            "ipv4_next_hop": "0.0.0.0",
+            "input_snmp": 0,
+            "output_snmp": 0,
+            "in_pkts": 1,
+            "in_bytes": 70,
+            "first_switched": "2017-10-11T13:12:35.999Z",
+            "last_switched": "2017-10-11T13:12:35.999Z",
+            "l4_src_port": 50896,
+            "l4_dst_port": 53,
+            "tcp_flags": 0,
+            "protocol": 17,
+            "src_tos": 0,
+            "src_as": 0,
+            "dst_as": 0,
+            "src_mask": 0,
+            "dst_mask": 0
+          },
+          "@version": "1",
+          "host": "192.168.0.14"
+        }
+      },
+      {
+        "_index": "netflow-v5-2017.10.11",
+        "_type": "logs",
+        "_id": "AV8LhQqZyn_BE1UV4cVZ",
+        "_score": 1,
+        "_source": {
+          "@timestamp": "2017-10-11T13:13:15.000Z",
+          "netflow": {
+            "version": 5,
+            "flow_seq_num": 0,
+            "engine_type": 0,
+            "engine_id": 187,
+            "sampling_algorithm": 0,
+            "sampling_interval": 0,
+            "flow_records": 30,
+            "ipv4_src_addr": "192.168.0.1",
+            "ipv4_dst_addr": "192.168.0.14",
+            "ipv4_next_hop": "0.0.0.0",
+            "input_snmp": 0,
+            "output_snmp": 0,
+            "in_pkts": 1,
+            "in_bytes": 167,
+            "first_switched": "2017-10-11T13:12:35.999Z",
+            "last_switched": "2017-10-11T13:12:35.999Z",
+            "l4_src_port": 53,
+            "l4_dst_port": 50896,
+            "tcp_flags": 0,
+            "protocol": 17,
+            "src_tos": 0,
+            "src_as": 0,
+            "dst_as": 0,
+            "src_mask": 0,
+            "dst_mask": 0
+          },
+          "@version": "1",
+          "host": "192.168.0.14"
+        }
+      },
+      {
+        "_index": "netflow-v5-2017.10.11",
+        "_type": "logs",
+        "_id": "AV8LhQqZyn_BE1UV4cVa",
+        "_score": 1,
+        "_source": {
+          "@timestamp": "2017-10-11T13:13:15.000Z",
+          "netflow": {
+            "version": 5,
+            "flow_seq_num": 0,
+            "engine_type": 0,
+            "engine_id": 187,
+            "sampling_algorithm": 0,
+            "sampling_interval": 0,
+            "flow_records": 30,
+            "ipv4_src_addr": "192.168.0.14",
+            "ipv4_dst_addr": "192.168.0.1",
+            "ipv4_next_hop": "0.0.0.0",
+            "input_snmp": 0,
+            "output_snmp": 0,
+            "in_pkts": 1,
+            "in_bytes": 59,
+            "first_switched": "2017-10-11T13:12:37.999Z",
+            "last_switched": "2017-10-11T13:12:37.999Z",
+            "l4_src_port": 59798,
+            "l4_dst_port": 53,
+            "tcp_flags": 0,
+            "protocol": 17,
+            "src_tos": 0,
+            "src_as": 0,
+            "dst_as": 0,
+            "src_mask": 0,
+            "dst_mask": 0
+          },
+          "@version": "1",
+          "host": "192.168.0.14"
+        }
+      },
+      {
+        "_index": "netflow-v5-2017.10.11",
+        "_type": "logs",
+        "_id": "AV8LhQqZyn_BE1UV4cVb",
+        "_score": 1,
+        "_source": {
+          "@timestamp": "2017-10-11T13:13:15.000Z",
+          "netflow": {
+            "version": 5,
+            "flow_seq_num": 0,
+            "engine_type": 0,
+            "engine_id": 187,
+            "sampling_algorithm": 0,
+            "sampling_interval": 0,
+            "flow_records": 30,
+            "ipv4_src_addr": "192.168.0.1",
+            "ipv4_dst_addr": "192.168.0.14",
+            "ipv4_next_hop": "0.0.0.0",
+            "input_snmp": 0,
+            "output_snmp": 0,
+            "in_pkts": 1,
+            "in_bytes": 134,
+            "first_switched": "2017-10-11T13:12:37.999Z",
+            "last_switched": "2017-10-11T13:12:37.999Z",
+            "l4_src_port": 53,
+            "l4_dst_port": 59798,
+            "tcp_flags": 0,
+            "protocol": 17,
+            "src_tos": 0,
+            "src_as": 0,
+            "dst_as": 0,
+            "src_mask": 0,
+            "dst_mask": 0
+          },
+          "@version": "1",
+          "host": "192.168.0.14"
+        }
+      },
+      {
+        "_index": "netflow-v5-2017.10.11",
+        "_type": "logs",
+        "_id": "AV8LhQqZyn_BE1UV4cVc",
+        "_score": 1,
+        "_source": {
+          "@timestamp": "2017-10-11T13:13:15.000Z",
+          "netflow": {
+            "version": 5,
+            "flow_seq_num": 0,
+            "engine_type": 0,
+            "engine_id": 187,
+            "sampling_algorithm": 0,
+            "sampling_interval": 0,
+            "flow_records": 30,
+            "ipv4_src_addr": "192.168.0.14",
+            "ipv4_dst_addr": "192.168.0.1",
+            "ipv4_next_hop": "0.0.0.0",
+            "input_snmp": 0,
+            "output_snmp": 0,
+            "in_pkts": 1,
+            "in_bytes": 63,
+            "first_switched": "2017-10-11T13:12:37.999Z",
+            "last_switched": "2017-10-11T13:12:37.999Z",
+            "l4_src_port": 51465,
+            "l4_dst_port": 53,
+            "tcp_flags": 0,
+            "protocol": 17,
+            "src_tos": 0,
+            "src_as": 0,
+            "dst_as": 0,
+            "src_mask": 0,
+            "dst_mask": 0
+          },
+          "@version": "1",
+          "host": "192.168.0.14"
+        }
+      },
+      {
+        "_index": "netflow-v5-2017.10.11",
+        "_type": "logs",
+        "_id": "AV8LhQqZyn_BE1UV4cVd",
+        "_score": 1,
+        "_source": {
+          "@timestamp": "2017-10-11T13:13:15.000Z",
+          "netflow": {
+            "version": 5,
+            "flow_seq_num": 0,
+            "engine_type": 0,
+            "engine_id": 187,
+            "sampling_algorithm": 0,
+            "sampling_interval": 0,
+            "flow_records": 30,
+            "ipv4_src_addr": "192.168.0.1",
+            "ipv4_dst_addr": "192.168.0.14",
+            "ipv4_next_hop": "0.0.0.0",
+            "input_snmp": 0,
+            "output_snmp": 0,
+            "in_pkts": 1,
+            "in_bytes": 79,
+            "first_switched": "2017-10-11T13:12:37.999Z",
+            "last_switched": "2017-10-11T13:12:37.999Z",
+            "l4_src_port": 53,
+            "l4_dst_port": 51465,
+            "tcp_flags": 0,
+            "protocol": 17,
+            "src_tos": 0,
+            "src_as": 0,
+            "dst_as": 0,
+            "src_mask": 0,
+            "dst_mask": 0
+          },
+          "@version": "1",
+          "host": "192.168.0.14"
+        }
+      },
+      {
+        "_index": "netflow-v5-2017.10.11",
+        "_type": "logs",
+        "_id": "AV8LhQqZyn_BE1UV4cVe",
+        "_score": 1,
+        "_source": {
+          "@timestamp": "2017-10-11T13:13:15.000Z",
+          "netflow": {
+            "version": 5,
+            "flow_seq_num": 0,
+            "engine_type": 0,
+            "engine_id": 187,
+            "sampling_algorithm": 0,
+            "sampling_interval": 0,
+            "flow_records": 30,
+            "ipv4_src_addr": "192.168.0.14",
+            "ipv4_dst_addr": "178.255.83.1",
+            "ipv4_next_hop": "0.0.0.0",
+            "input_snmp": 0,
+            "output_snmp": 0,
+            "in_pkts": 5,
+            "in_bytes": 448,
+            "first_switched": "2017-10-11T13:12:37.999Z",
+            "last_switched": "2017-10-11T13:12:37.999Z",
+            "l4_src_port": 1547,
+            "l4_dst_port": 80,
+            "tcp_flags": 27,
+            "protocol": 6,
+            "src_tos": 0,
+            "src_as": 0,
+            "dst_as": 0,
+            "src_mask": 0,
+            "dst_mask": 0
+          },
+          "@version": "1",
+          "host": "192.168.0.14"
+        }
+      }
+    ]
+  },
+  "aggregations": {
+    "dst_addr": {
+      "doc_count_error_upper_bound": 3231,
+      "sum_other_doc_count": 324935,
+      "buckets": [
+        {
+          "key": "192.168.2.10",
+          "doc_count": 1136175,
+          "src_addr": {
+            "doc_count_error_upper_bound": 1,
+            "sum_other_doc_count": 391,
+            "buckets": [
+              {
+                "key": "192.168.1.160",
+                "doc_count": 1061350
+              },
+              {
+                "key": "192.168.0.12",
+                "doc_count": 21272
+              },
+              {
+                "key": "192.168.1.11",
+                "doc_count": 21234
+              },
+              {
+                "key": "192.168.1.102",
+                "doc_count": 18645
+              },
+              {
+                "key": "192.168.0.11",
+                "doc_count": 7387
+              },
+              {
+                "key": "192.168.0.91",
+                "doc_count": 2946
+              },
+              {
+                "key": "192.168.3.216",
+                "doc_count": 2515
+              },
+              {
+                "key": "192.168.0.1",
+                "doc_count": 247
+              },
+              {
+                "key": "192.168.1.118",
+                "doc_count": 123
+              },
+              {
+                "key": "192.168.2.103",
+                "doc_count": 65
+              }
+            ]
+          }
+        },
+        {
+          "key": "192.168.1.160",
+          "doc_count": 1061551,
+          "src_addr": {
+            "doc_count_error_upper_bound": 0,
+            "sum_other_doc_count": 0,
+            "buckets": [
+              {
+                "key": "192.168.2.10",
+                "doc_count": 1061344
+              },
+              {
+                "key": "192.168.0.14",
+                "doc_count": 207
+              }
+            ]
+          }
+        },
+        {
+          "key": "239.255.255.250",
+          "doc_count": 466645,
+          "src_addr": {
+            "doc_count_error_upper_bound": 1,
+            "sum_other_doc_count": 34079,
+            "buckets": [
+              {
+                "key": "192.168.0.12",
+                "doc_count": 87186
+              },
+              {
+                "key": "192.168.0.14",
+                "doc_count": 81122
+              },
+              {
+                "key": "192.168.0.13",
+                "doc_count": 69383
+              },
+              {
+                "key": "192.168.1.14",
+                "doc_count": 48184
+              },
+              {
+                "key": "192.168.1.102",
+                "doc_count": 37483
+              },
+              {
+                "key": "192.168.1.11",
+                "doc_count": 32847
+              },
+              {
+                "key": "192.168.0.11",
+                "doc_count": 31529
+              },
+              {
+                "key": "192.168.1.222",
+                "doc_count": 20799
+              },
+              {
+                "key": "192.168.1.160",
+                "doc_count": 14710
+              },
+              {
+                "key": "192.168.0.24",
+                "doc_count": 9323
+              }
+            ]
+          }
+        },
+        {
+          "key": "192.168.0.14",
+          "doc_count": 360021,
+          "src_addr": {
+            "doc_count_error_upper_bound": 1494,
+            "sum_other_doc_count": 144728,
+            "buckets": [
+              {
+                "key": "192.168.0.1",
+                "doc_count": 120591
+              },
+              {
+                "key": "172.217.3.163",
+                "doc_count": 20556
+              },
+              {
+                "key": "172.217.3.174",
+                "doc_count": 19132
+              },
+              {
+                "key": "134.121.120.167",
+                "doc_count": 16278
+              },
+              {
+                "key": "64.4.54.254",
+                "doc_count": 7235
+              },
+              {
+                "key": "64.71.168.217",
+                "doc_count": 7125
+              },
+              {
+                "key": "192.168.1.114",
+                "doc_count": 6906
+              },
+              {
+                "key": "172.217.3.170",
+                "doc_count": 6866
+              },
+              {
+                "key": "64.4.54.253",
+                "doc_count": 5680
+              },
+              {
+                "key": "172.217.3.195",
+                "doc_count": 4924
+              }
+            ]
+          }
+        },
+        {
+          "key": "192.168.3.255",
+          "doc_count": 114835,
+          "src_addr": {
+            "doc_count_error_upper_bound": 1,
+            "sum_other_doc_count": 17551,
+            "buckets": [
+              {
+                "key": "192.168.0.10",
+                "doc_count": 24133
+              },
+              {
+                "key": "192.168.1.11",
+                "doc_count": 12561
+              },
+              {
+                "key": "192.168.0.13",
+                "doc_count": 11231
+              },
+              {
+                "key": "192.168.1.181",
+                "doc_count": 8840
+              },
+              {
+                "key": "192.168.0.14",
+                "doc_count": 8236
+              },
+              {
+                "key": "192.168.0.12",
+                "doc_count": 8093
+              },
+              {
+                "key": "192.168.0.11",
+                "doc_count": 7481
+              },
+              {
+                "key": "192.168.1.102",
+                "doc_count": 6852
+              },
+              {
+                "key": "192.168.0.183",
+                "doc_count": 5040
+              },
+              {
+                "key": "192.168.0.181",
+                "doc_count": 4817
+              }
+            ]
+          }
+        },
+        {
+          "key": "192.168.0.1",
+          "doc_count": 105345,
+          "src_addr": {
+            "doc_count_error_upper_bound": 0,
+            "sum_other_doc_count": 0,
+            "buckets": [
+              {
+                "key": "192.168.0.14",
+                "doc_count": 104641
+              },
+              {
+                "key": "192.168.2.10",
+                "doc_count": 625
+              },
+              {
+                "key": "192.168.3.224",
+                "doc_count": 79
+              }
+            ]
+          }
+        },
+        {
+          "key": "255.255.255.255",
+          "doc_count": 44744,
+          "src_addr": {
+            "doc_count_error_upper_bound": 1,
+            "sum_other_doc_count": 5346,
+            "buckets": [
+              {
+                "key": "192.168.0.11",
+                "doc_count": 9027
+              },
+              {
+                "key": "192.168.3.210",
+                "doc_count": 8299
+              },
+              {
+                "key": "192.168.0.177",
+                "doc_count": 4494
+              },
+              {
+                "key": "192.168.1.11",
+                "doc_count": 3511
+              },
+              {
+                "key": "192.168.1.102",
+                "doc_count": 3385
+              },
+              {
+                "key": "192.168.3.191",
+                "doc_count": 2450
+              },
+              {
+                "key": "192.168.0.1",
+                "doc_count": 2394
+              },
+              {
+                "key": "192.168.1.14",
+                "doc_count": 2352
+              },
+              {
+                "key": "192.168.0.12",
+                "doc_count": 2201
+              },
+              {
+                "key": "0.0.0.0",
+                "doc_count": 1285
+              }
+            ]
+          }
+        },
+        {
+          "key": "224.0.0.252",
+          "doc_count": 27453,
+          "src_addr": {
+            "doc_count_error_upper_bound": 0,
+            "sum_other_doc_count": 50,
+            "buckets": [
+              {
+                "key": "192.168.0.14",
+                "doc_count": 24721
+              },
+              {
+                "key": "192.168.0.173",
+                "doc_count": 1868
+              },
+              {
+                "key": "192.168.0.19",
+                "doc_count": 324
+              },
+              {
+                "key": "192.168.1.160",
+                "doc_count": 265
+              },
+              {
+                "key": "192.168.1.14",
+                "doc_count": 80
+              },
+              {
+                "key": "192.168.0.183",
+                "doc_count": 50
+              },
+              {
+                "key": "192.168.0.13",
+                "doc_count": 35
+              },
+              {
+                "key": "192.168.0.23",
+                "doc_count": 25
+              },
+              {
+                "key": "192.168.0.121",
+                "doc_count": 21
+              },
+              {
+                "key": "192.168.0.1",
+                "doc_count": 14
+              }
+            ]
+          }
+        },
+        {
+          "key": "172.217.3.163",
+          "doc_count": 20422,
+          "src_addr": {
+            "doc_count_error_upper_bound": 0,
+            "sum_other_doc_count": 0,
+            "buckets": [
+              {
+                "key": "192.168.0.14",
+                "doc_count": 20422
+              }
+            ]
+          }
+        },
+        {
+          "key": "172.217.3.174",
+          "doc_count": 18991,
+          "src_addr": {
+            "doc_count_error_upper_bound": 0,
+            "sum_other_doc_count": 0,
+            "buckets": [
+              {
+                "key": "192.168.0.14",
+                "doc_count": 18985
+              },
+              {
+                "key": "192.168.3.224",
+                "doc_count": 6
+              }
+            ]
+          }
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,258 @@
+Netflow:
+	{
+	"_id": "AVYfYT9v8ZWATtH7C4bX",
+	"_index": "netflow-v9-2016.07.25",
+	"_score": 1.0,
+	"_source": {
+		"@timestamp": "2016-07-25T00:08:01.000Z",
+		"@version": "1",
+		"host": "192.168.0.91",
+		"netflow": {
+			"first_switched": "2016-07-24T23:07:56.999Z",
+			"flow_seq_num": 235027,
+			"flowset_id": 1024,
+			"in_bytes": 52,
+			"in_pkts": 1,
+			"input_snmp": 0,
+			"ip_protocol_version": 4,
+			"ipv4_dst_addr": "192.168.2.10",
+			"ipv4_src_addr": "192.168.2.50",
+			"l4_dst_port": 2919,
+			"l4_src_port": 63039,
+			"last_switched": "2016-07-24T23:07:56.999Z",
+			"output_snmp": 0,
+			"protocol": 6,
+			"tcp_flags": 2,
+			"version": 9
+		}
+	},
+
+	
+Bro:
+	{
+	"_id": "AWB2Xu8xk6pW1CQ7dVaU",
+	"_index": "bro-2017.12.21",
+	"_score": 1.0,
+	"_source": {
+		"@timestamp": "2017-12-21T00:00:07.326Z",
+		"@version": "1",
+		"beat": {
+			"hostname": "hadoop",
+			"name": "hadoop",
+			"version": "5.6.3"
+		},
+		"host": "hadoop",
+		"input_type": "log",
+		"message": "1513814405.183206\tCgEQfElttifOIjJLk\t192.168.1.160\t40230\t192.168.2.10\t2869\tunknown_HTTP_method\tNOTIFY\tF\tbro",
+		"offset": 899,
+		"source": "/opt/bro/logs/current/weird.log",
+		"tags": [
+			"beats_input_codec_plain_applied"
+		],
+		"type": "log"
+	},
+
+
+WinlogBeat:
+	{
+	"_id": "AV_W5d8jk6pW1CQ7t80b",
+	"_index": "winlogbeat-2017.11.20",
+	"_score": 1.0,
+	"_source": {
+		"@timestamp": "2017-11-20T01:03:00.245Z",
+		"beat": {
+			"hostname": "HP-B53-01",
+			"name": "HP-B53-01"
+		},
+		"computer_name": "HP-B53-01",
+		"count": 1,
+		"event_id": 7036,
+		"level": "Information",
+		"log_name": "System",
+		"message": "The Adobe Flash Player Update Service service entered the running state.",
+		"record_number": "284743",
+		"source_name": "Service Control Manager",
+		"type": "wineventlog"
+	},
+	"_type": "wineventlog"
+},
+
+
+Packetbeat:
+	{
+		"_id": "AV8eyO7Pyn_BE1UV8hXL",
+		"_index": "packetbeat-2017.10.15",
+		"_score": 1.0,
+		"_source": {
+			"@timestamp": "2017-10-15T07:00:19.996Z",
+			"beat": {
+				"hostname": "HP-B58-04",
+				"name": "HP-B58-04",
+				"version": "5.0.0"
+			},
+			"dest": {
+				"ipv6": "ff02::1:2",
+				"mac": "33:33:00:01:00:02",
+				"port": 547
+			},
+			"final": false,
+			"flow_id": "QQIA//////8M//8s//8BAAEzMwABAAJkAGplANr/AgAAAAAAAAAAAAAAAQAC/oAAAAAAAAC5pqwr8OlLfyMCIgI",
+			"last_time": "2017-10-15T07:00:14.851Z",
+			"source": {
+				"ipv6": "fe80::b9a6:ac2b:f0e9:4b7f",
+				"mac": "64:00:6a:65:00:da",
+				"port": 546,
+				"stats": {
+					"net_bytes_total": 155,
+					"net_packets_total": 1
+				}
+			},
+			"start_time": "2017-10-15T07:00:14.851Z",
+			"transport": "udp",
+			"type": "flow"
+		},
+		"_type": "flow"
+	},
+
+	
+
+
+
+Snort:
+	{
+		"_id": "AV7u_tDcyn_BE1UV4ExA",
+		"_index": "snort-2017.10.06",
+		"_score": 1.0,
+		"_source": {
+			"@timestamp": "2017-10-06T00:03:46.695Z",
+			"@version": "1",
+			"beat": {
+				"hostname": "snort",
+				"name": "snort"
+			},
+			"blocked": 0,
+			"classification_id": 25,
+			"dport": 22,
+			"dst_ip": "192.168.0.91",
+			"dst_ipv4": "192.168.0.91",
+			"event_id": 60005,
+			"event_microsecond": 695913,
+			"event_second": 1507248226,
+			"generator_id": 128,
+			"host": "snort",
+			"impact": 0,
+			"impact_flag": 0,
+			"indexed_at": "2017-10-06T00:03:48.299Z",
+			"input_type": "unified2",
+			"mpls_label": 0,
+			"priority": 2,
+			"protocol": 6,
+			"record_type": "event",
+			"rule_raw": "alert ( msg: \"SSH_EVENT_PROTOMISMATCH\"; sid: 4; gid: 128; rev: 1; metadata: rule-type preproc, service ssh ; classtype:non-standard-protocol;)",
+			"rule_source_file": "/etc/snort/rules/snort.rules",
+			"rule_source_file_line_number": 51311,
+			"sensor_hostname": "snort",
+			"sensor_id": 0,
+			"sensor_interface": "eth0",
+			"sensor_type": "snort",
+			"signature": "SSH_EVENT_PROTOMISMATCH",
+			"signature_id": 4,
+			"signature_revision": 1,
+			"source": "/var/log/snort/var/log/snort/snort.u2.1507089434",
+			"source_offset": 118473734,
+			"sport": 23447,
+			"src_ip": "192.168.0.14",
+			"src_ipv4": "192.168.0.14",
+			"tags": [
+				"beats_input_raw_event"
+			],
+			"type": "event",
+			"vlan_id": 0
+		},
+		"_type": "event"
+	},
+	{
+		"_id": "AV7u_tDcyn_BE1UV4ExB",
+		"_index": "snort-2017.10.06",
+		"_score": 1.0,
+		"_source": {
+			"@timestamp": "2017-10-06T00:03:46.695Z",
+			"@version": "1",
+			"beat": {
+				"hostname": "snort",
+				"name": "snort"
+			},
+			"ethernet_dst_mac": "00:0c:29:fc:07:c5",
+			"ethernet_length": "0",
+			"ethernet_src_mac": "7c:05:07:72:5e:66",
+			"ethernet_type": "IPv4",
+			"event_id": 60005,
+			"event_second": 1507248226,
+			"host": "snort",
+			"indexed_at": "2017-10-06T00:03:48.300Z",
+			"input_type": "unified2",
+			"ip_checksum": 5016,
+			"ip_dst_ip": "192.168.0.91",
+			"ip_flags": 2,
+			"ip_fragoffset": 0,
+			"ip_id": 25246,
+			"ip_ihl": 5,
+			"ip_length": 776,
+			"ip_options": null,
+			"ip_padding": null,
+			"ip_protocol": 6,
+			"ip_src_ip": "192.168.0.14",
+			"ip_tos": 0,
+			"ip_ttl": 128,
+			"ip_version": 4,
+			"packet_data": ")|r^fEb@[[,R?Pj4c]R@F/57jPEX?9Uc{\\zN2o>~pd1=4GQTHPSNb &NhVI0aL+J{e=<2Q>?t{$KK4Xp(V#r-1D4SIe,h8R:w$r#;4N+nUM*puGaF9\"H#dO+]l>9M>YrTIbL8^?+zDVBS .i?:9TV/dCx3Y\\D!5Hkh}u0YUs0K/WG+iT4d9$pb0|h0Hm-)qa@KNV=OWxNj7X*tCQe#@5: K_aPnrM+&6k>-LSUR$_\"&7kG17e.7+tej*NAR2<wCH[[JX.b3+!moy3fP*x.+II@tsXF-JN3:j;yI4ZVzgN(cK?~Ho:o}+\"",
+			"packet_data_hex": "00 0c 29 fc 07 c5 7c 05 07 72 5e 66 08 00 45 00 03 08 62 9e 40 00 80 06 13 98 c0 a8 00 0e c0 a8 00 5b 5b 97 00 16 2c 52 10 3f bb 86 af a3 50 18 08 05 ff 94 00 00 fe 88 01 0b 6a 9d 34 b3 63 de 5d b8 07 52 40 05 46 b2 ee 2f d4 35 37 6a f3 9f c4 50 bb 97 45 f7 7f 8e ed 10 58 9c b5 3f 84 d7 c1 be 39 bb 55 a9 63 81 7b 5c 13 12 7a 86 4e 32 81 15 6f 19 3e e7 a8 7e 70 64 df 10 31 da fd ca bd 3d a9 a1 8a bc 34 47 51 fd b6 f0 54 48 c0 1e 50 c1 53 be dc 4e 62 20 a2 e8 f1 f8 26 1f d8 b9 09 b7 4e 99 68 56 49 30 61 4c 2b 9e 4a 0f 0f 7b 97 df 65 cc 3d c5 3c 32 80 08 51 1b d8 1a 04 3e 3f 74 9f ac 7b 24 fa d0 4b b6 ec e6 4b dc e3 a5 34 02 58 a8 ba 9a ce 0c 70 28 f1 c4 df 56 e9 23 72 2d 31 0e 9e 0f 94 1e 8a 44 f8 34 53 49 65 2c 68 cc 38 03 8d 52 8e 3a 77 19 1a 07 80 24 dd bc ed cd 86 72 23 ec d4 e2 cb 3b 34 85 a9 f6 b3 b7 09 06 ff 97 eb 4e 13 2b 6e aa 55 4d ae 2a 1b ee 70 d3 1b e7 75 af 47 07 84 fb d1 e5 b1 db 09 ea ac 61 8c 46 39 fd 22 48 b3 0c a1 23 64 94 cd 4f 91 c2 1d ae c7 94 cc e2 c8 ea 2b 0f fc 5d 6c 3e 39 4d d0 3e ab 1e b2 e6 59 b7 72 54 d9 49 bc ed e3 62 09 4c a3 38 5e ec 9b 88 7f 3f 2b d7 1d ca 87 7a 06 44 56 42 53 e0 10 0d c4 1f df 96 a8 20 2e 9e 69 9b d7 3f 90 d3 86 f7 c0 09 ef 03 3a cb 39 e7 10 d8 54 56 2f 64 43 09 a1 19 f4 c9 8a 78 d7 33 d1 04 a8 59 5c 09 44 21 35 48 6b 68 7d 75 30 59 f1 0d 0b 55 86 73 ea 1c bd 30 d6 4b 0b cc e8 2f 57 95 47 06 d9 2b a7 a6 d0 f3 69 c8 54 34 64 39 ed c0 c7 24 bb de f4 70 62 12 dd f0 30 7c 68 10 30 e1 48 b4 99 c2 6d f6 15 98 2d 29 b2 06 d3 01 9d e1 71 a0 61 11 40 ac 4b e2 4e f1 56 81 82 3d 4f d0 8e 57 94 c0 78 4e b7 05 6a cf 37 db 58 fa 92 ce 2a 74 95 bb 43 51 d8 ec 96 65 e4 c0 c9 23 17 40 ff 35 0a 3a db db 90 c9 f5 20 1d 91 e3 4b a4 5f be 8e 61 f6 c1 50 6e b7 72 c4 4d b6 2b c0 e3 18 be 26 e6 81 b9 ad b6 d8 ab 03 36 b3 6b 94 a8 ae c9 3e 08 2d 4c 94 c3 53 55 52 cb 24 e7 d2 5f e2 cc 0e 95 99 22 26 37 1a f1 b4 6b 96 ad 47 85 7f da 94 0f 9f 31 f4 b3 e7 b2 37 65 13 94 e2 08 8a 97 2e 37 2b e2 e0 fc 74 65 6a a0 2a 4e 41 97 b6 52 b3 32 af 3c 77 89 43 85 48 04 8c 5b 5b 4a 00 58 2e 62 33 2b 21 6d 6f 79 33 99 f8 66 d3 fb 50 89 10 2a f7 78 2e 01 2b 49 49 40 74 a0 73 fe e4 c0 b4 e4 58 bc e1 c7 46 2d fb d7 c0 8a cc aa a9 80 a4 a4 a1 c6 ff 4a ec ce 4e f0 eb a9 c4 8d 33 3a 6a b0 81 ad c3 3b 10 79 e7 c8 db c5 49 8f 34 5a e5 00 56 7a e0 fa 86 67 4e 1a 28 ad 63 8e b1 cb 4b 3f c3 85 f5 7e ce 48 6f bd 3a ac cb 6f 7d 2b 22",
+			"packet_dump": "-- FULL PACKET DATA (790 bytes) ------------------------------------\n00000000  00 0c 29 fc 07 c5 7c 05  07 72 5e 66 08 00 45 00  |..)...|..r^f..E.|\n00000010  03 08 62 9e 40 00 80 06  13 98 c0 a8 00 0e c0 a8  |..b.@...........|\n00000020  00 5b 5b 97 00 16 2c 52  10 3f bb 86 af a3 50 18  |.[[...,R.?....P.|\n00000030  08 05 ff 94 00 00 fe 88  01 0b 6a 9d 34 b3 63 de  |..........j.4.c.|\n00000040  5d b8 07 52 40 05 46 b2  ee 2f d4 35 37 6a f3 9f  |]..R@.F../.57j..|\n00000050  c4 50 bb 97 45 f7 7f 8e  ed 10 58 9c b5 3f 84 d7  |.P..E.....X..?..|\n00000060  c1 be 39 bb 55 a9 63 81  7b 5c 13 12 7a 86 4e 32  |..9.U.c.{\\..z.N2|\n00000070  81 15 6f 19 3e e7 a8 7e  70 64 df 10 31 da fd ca  |..o.>..~pd..1...|\n00000080  bd 3d a9 a1 8a bc 34 47  51 fd b6 f0 54 48 c0 1e  |.=....4GQ...TH..|\n00000090  50 c1 53 be dc 4e 62 20  a2 e8 f1 f8 26 1f d8 b9  |P.S..Nb ....&...|\n000000a0  09 b7 4e 99 68 56 49 30  61 4c 2b 9e 4a 0f 0f 7b  |..N.hVI0aL+.J..{|\n000000b0  97 df 65 cc 3d c5 3c 32  80 08 51 1b d8 1a 04 3e  |..e.=.<2..Q....>|\n000000c0  3f 74 9f ac 7b 24 fa d0  4b b6 ec e6 4b dc e3 a5  |?t..{$..K...K...|\n000000d0  34 02 58 a8 ba 9a ce 0c  70 28 f1 c4 df 56 e9 23  |4.X.....p(...V.#|\n000000e0  72 2d 31 0e 9e 0f 94 1e  8a 44 f8 34 53 49 65 2c  |r-1......D.4SIe,|\n000000f0  68 cc 38 03 8d 52 8e 3a  77 19 1a 07 80 24 dd bc  |h.8..R.:w....$..|\n00000100  ed cd 86 72 23 ec d4 e2  cb 3b 34 85 a9 f6 b3 b7  |...r#....;4.....|\n00000110  09 06 ff 97 eb 4e 13 2b  6e aa 55 4d ae 2a 1b ee  |.....N.+n.UM.*..|\n00000120  70 d3 1b e7 75 af 47 07  84 fb d1 e5 b1 db 09 ea  |p...u.G.........|\n00000130  ac 61 8c 46 39 fd 22 48  b3 0c a1 23 64 94 cd 4f  |.a.F9.\"H...#d..O|\n00000140  91 c2 1d ae c7 94 cc e2  c8 ea 2b 0f fc 5d 6c 3e  |..........+..]l>|\n00000150  39 4d d0 3e ab 1e b2 e6  59 b7 72 54 d9 49 bc ed  |9M.>....Y.rT.I..|\n00000160  e3 62 09 4c a3 38 5e ec  9b 88 7f 3f 2b d7 1d ca  |.b.L.8^....?+...|\n00000170  87 7a 06 44 56 42 53 e0  10 0d c4 1f df 96 a8 20  |.z.DVBS........ |\n00000180  2e 9e 69 9b d7 3f 90 d3  86 f7 c0 09 ef 03 3a cb  |..i..?........:.|\n00000190  39 e7 10 d8 54 56 2f 64  43 09 a1 19 f4 c9 8a 78  |9...TV/dC......x|\n000001a0  d7 33 d1 04 a8 59 5c 09  44 21 35 48 6b 68 7d 75  |.3...Y\\.D!5Hkh}u|\n000001b0  30 59 f1 0d 0b 55 86 73  ea 1c bd 30 d6 4b 0b cc  |0Y...U.s...0.K..|\n000001c0  e8 2f 57 95 47 06 d9 2b  a7 a6 d0 f3 69 c8 54 34  |./W.G..+....i.T4|\n000001d0  64 39 ed c0 c7 24 bb de  f4 70 62 12 dd f0 30 7c  |d9...$...pb...0||\n000001e0  68 10 30 e1 48 b4 99 c2  6d f6 15 98 2d 29 b2 06  |h.0.H...m...-)..|\n000001f0  d3 01 9d e1 71 a0 61 11  40 ac 4b e2 4e f1 56 81  |....q.a.@.K.N.V.|\n00000200  82 3d 4f d0 8e 57 94 c0  78 4e b7 05 6a cf 37 db  |.=O..W..xN..j.7.|\n00000210  58 fa 92 ce 2a 74 95 bb  43 51 d8 ec 96 65 e4 c0  |X...*t..CQ...e..|\n00000220  c9 23 17 40 ff 35 0a 3a  db db 90 c9 f5 20 1d 91  |.#.@.5.:..... ..|\n00000230  e3 4b a4 5f be 8e 61 f6  c1 50 6e b7 72 c4 4d b6  |.K._..a..Pn.r.M.|\n00000240  2b c0 e3 18 be 26 e6 81  b9 ad b6 d8 ab 03 36 b3  |+....&........6.|\n00000250  6b 94 a8 ae c9 3e 08 2d  4c 94 c3 53 55 52 cb 24  |k....>.-L..SUR.$|\n00000260  e7 d2 5f e2 cc 0e 95 99  22 26 37 1a f1 b4 6b 96  |.._.....\"&7...k.|\n00000270  ad 47 85 7f da 94 0f 9f  31 f4 b3 e7 b2 37 65 13  |.G......1....7e.|\n00000280  94 e2 08 8a 97 2e 37 2b  e2 e0 fc 74 65 6a a0 2a  |......7+...tej.*|\n00000290  4e 41 97 b6 52 b3 32 af  3c 77 89 43 85 48 04 8c  |NA..R.2.<w.C.H..|\n000002a0  5b 5b 4a 00 58 2e 62 33  2b 21 6d 6f 79 33 99 f8  |[[J.X.b3+!moy3..|\n000002b0  66 d3 fb 50 89 10 2a f7  78 2e 01 2b 49 49 40 74  |f..P..*.x..+II@t|\n000002c0  a0 73 fe e4 c0 b4 e4 58  bc e1 c7 46 2d fb d7 c0  |.s.....X...F-...|\n000002d0  8a cc aa a9 80 a4 a4 a1  c6 ff 4a ec ce 4e f0 eb  |..........J..N..|\n000002e0  a9 c4 8d 33 3a 6a b0 81  ad c3 3b 10 79 e7 c8 db  |...3:j....;.y...|\n000002f0  c5 49 8f 34 5a e5 00 56  7a e0 fa 86 67 4e 1a 28  |.I.4Z..Vz...gN.(|\n00000300  ad 63 8e b1 cb 4b 3f c3  85 f5 7e ce 48 6f bd 3a  |.c...K?...~.Ho.:|\n00000310  ac cb 6f 7d 2b 22                                 |..o}+\"|\n--- Layer 1 ---\nEthernet LayerType=17\t SrcMAC=7c:05:07:72:5e:66 DstMAC=00:0c:29:fc:07:c5 EthernetType=IPv4 Length=0 \n00000000  00 0c 29 fc 07 c5 7c 05  07 72 5e 66 08 00        |..)...|..r^f..|\n--- Layer 2 ---\nIPv4 LayerType=20\t Version=4 IHL=5 TOS=0 Length=776 Id=25246 Flags=DF FragOffset=0 TTL=128 Protocol=TCP Checksum=5016 SrcIP=192.168.0.14 DstIP=192.168.0.91 Options=[] Padding=[] \n00000000  45 00 03 08 62 9e 40 00  80 06 13 98 c0 a8 00 0e  |E...b.@.........|\n00000010  c0 a8 00 5b                                       |...[|\n--- Layer 3 ---\nTCP LayerType=44\t SrcPort=23447 DstPort=22(ssh) Seq=743575615 Ack=3146166179 DataOffset=5 FIN=false SYN=false RST=false PSH=true ACK=true URG=false ECE=false CWR=false NS=false Window=2053 Checksum=65428 Urgent=0 Options=[] Padding=[] \n00000000  5b 97 00 16 2c 52 10 3f  bb 86 af a3 50 18 08 05  |[...,R.?....P...|\n00000010  ff 94 00 00                                       |....|\n--- Layer 4 ---\nPayload LayerType=2\t736 byte(s)\n00000000  fe 88 01 0b 6a 9d 34 b3  63 de 5d b8 07 52 40 05  |....j.4.c.]..R@.|\n00000010  46 b2 ee 2f d4 35 37 6a  f3 9f c4 50 bb 97 45 f7  |F../.57j...P..E.|\n00000020  7f 8e ed 10 58 9c b5 3f  84 d7 c1 be 39 bb 55 a9  |....X..?....9.U.|\n00000030  63 81 7b 5c 13 12 7a 86  4e 32 81 15 6f 19 3e e7  |c.{\\..z.N2..o.>.|\n00000040  a8 7e 70 64 df 10 31 da  fd ca bd 3d a9 a1 8a bc  |.~pd..1....=....|\n00000050  34 47 51 fd b6 f0 54 48  c0 1e 50 c1 53 be dc 4e  |4GQ...TH..P.S..N|\n00000060  62 20 a2 e8 f1 f8 26 1f  d8 b9 09 b7 4e 99 68 56  |b ....&.....N.hV|\n00000070  49 30 61 4c 2b 9e 4a 0f  0f 7b 97 df 65 cc 3d c5  |I0aL+.J..{..e.=.|\n00000080  3c 32 80 08 51 1b d8 1a  04 3e 3f 74 9f ac 7b 24  |<2..Q....>?t..{$|\n00000090  fa d0 4b b6 ec e6 4b dc  e3 a5 34 02 58 a8 ba 9a  |..K...K...4.X...|\n000000a0  ce 0c 70 28 f1 c4 df 56  e9 23 72 2d 31 0e 9e 0f  |..p(...V.#r-1...|\n000000b0  94 1e 8a 44 f8 34 53 49  65 2c 68 cc 38 03 8d 52  |...D.4SIe,h.8..R|\n000000c0  8e 3a 77 19 1a 07 80 24  dd bc ed cd 86 72 23 ec  |.:w....$.....r#.|\n000000d0  d4 e2 cb 3b 34 85 a9 f6  b3 b7 09 06 ff 97 eb 4e  |...;4..........N|\n000000e0  13 2b 6e aa 55 4d ae 2a  1b ee 70 d3 1b e7 75 af  |.+n.UM.*..p...u.|\n000000f0  47 07 84 fb d1 e5 b1 db  09 ea ac 61 8c 46 39 fd  |G..........a.F9.|\n00000100  22 48 b3 0c a1 23 64 94  cd 4f 91 c2 1d ae c7 94  |\"H...#d..O......|\n00000110  cc e2 c8 ea 2b 0f fc 5d  6c 3e 39 4d d0 3e ab 1e  |....+..]l>9M.>..|\n00000120  b2 e6 59 b7 72 54 d9 49  bc ed e3 62 09 4c a3 38  |..Y.rT.I...b.L.8|\n00000130  5e ec 9b 88 7f 3f 2b d7  1d ca 87 7a 06 44 56 42  |^....?+....z.DVB|\n00000140  53 e0 10 0d c4 1f df 96  a8 20 2e 9e 69 9b d7 3f  |S........ ..i..?|\n00000150  90 d3 86 f7 c0 09 ef 03  3a cb 39 e7 10 d8 54 56  |........:.9...TV|\n00000160  2f 64 43 09 a1 19 f4 c9  8a 78 d7 33 d1 04 a8 59  |/dC......x.3...Y|\n00000170  5c 09 44 21 35 48 6b 68  7d 75 30 59 f1 0d 0b 55  |\\.D!5Hkh}u0Y...U|\n00000180  86 73 ea 1c bd 30 d6 4b  0b cc e8 2f 57 95 47 06  |.s...0.K.../W.G.|\n00000190  d9 2b a7 a6 d0 f3 69 c8  54 34 64 39 ed c0 c7 24  |.+....i.T4d9...$|\n000001a0  bb de f4 70 62 12 dd f0  30 7c 68 10 30 e1 48 b4  |...pb...0|h.0.H.|\n000001b0  99 c2 6d f6 15 98 2d 29  b2 06 d3 01 9d e1 71 a0  |..m...-)......q.|\n000001c0  61 11 40 ac 4b e2 4e f1  56 81 82 3d 4f d0 8e 57  |a.@.K.N.V..=O..W|\n000001d0  94 c0 78 4e b7 05 6a cf  37 db 58 fa 92 ce 2a 74  |..xN..j.7.X...*t|\n000001e0  95 bb 43 51 d8 ec 96 65  e4 c0 c9 23 17 40 ff 35  |..CQ...e...#.@.5|\n000001f0  0a 3a db db 90 c9 f5 20  1d 91 e3 4b a4 5f be 8e  |.:..... ...K._..|\n00000200  61 f6 c1 50 6e b7 72 c4  4d b6 2b c0 e3 18 be 26  |a..Pn.r.M.+....&|\n00000210  e6 81 b9 ad b6 d8 ab 03  36 b3 6b 94 a8 ae c9 3e  |........6.k....>|\n00000220  08 2d 4c 94 c3 53 55 52  cb 24 e7 d2 5f e2 cc 0e  |.-L..SUR.$.._...|\n00000230  95 99 22 26 37 1a f1 b4  6b 96 ad 47 85 7f da 94  |..\"&7...k..G....|\n00000240  0f 9f 31 f4 b3 e7 b2 37  65 13 94 e2 08 8a 97 2e  |..1....7e.......|\n00000250  37 2b e2 e0 fc 74 65 6a  a0 2a 4e 41 97 b6 52 b3  |7+...tej.*NA..R.|\n00000260  32 af 3c 77 89 43 85 48  04 8c 5b 5b 4a 00 58 2e  |2.<w.C.H..[[J.X.|\n00000270  62 33 2b 21 6d 6f 79 33  99 f8 66 d3 fb 50 89 10  |b3+!moy3..f..P..|\n00000280  2a f7 78 2e 01 2b 49 49  40 74 a0 73 fe e4 c0 b4  |*.x..+II@t.s....|\n00000290  e4 58 bc e1 c7 46 2d fb  d7 c0 8a cc aa a9 80 a4  |.X...F-.........|\n000002a0  a4 a1 c6 ff 4a ec ce 4e  f0 eb a9 c4 8d 33 3a 6a  |....J..N.....3:j|\n000002b0  b0 81 ad c3 3b 10 79 e7  c8 db c5 49 8f 34 5a e5  |....;.y....I.4Z.|\n000002c0  00 56 7a e0 fa 86 67 4e  1a 28 ad 63 8e b1 cb 4b  |.Vz...gN.(.c...K|\n000002d0  3f c3 85 f5 7e ce 48 6f  bd 3a ac cb 6f 7d 2b 22  |?...~.Ho.:..o}+\"|\n",
+			"packet_layers": [
+				"Ethernet",
+				"IPv4",
+				"TCP",
+				"Payload"
+			],
+			"packet_length": 790,
+			"packet_link_type": 1,
+			"packet_microsecond": 695913,
+			"packet_payload": "\ufffd\ufffd\u0001\u000bj\ufffd4\ufffdc\ufffd]\ufffd\u0007R@\u0005F\ufffd\ufffd/\ufffd57j\ufffd\ufffd\ufffdP\ufffd\ufffdE\ufffd\u007f\ufffd\ufffd\u0010X\ufffd\ufffd?\ufffd\ufffd\ufffd\ufffd9\ufffdU\ufffdc\ufffd{\\\u0013\u0012z\ufffdN2\ufffd\u0015o\u0019>\ufffd\ufffd~pd\ufffd\u00101\ufffd\ufffd\u02bd=\ufffd\ufffd\ufffd\ufffd4GQ\ufffd\ufffd\ufffdTH\ufffd\u001eP\ufffdS\ufffd\ufffdNb \ufffd\ufffd\ufffd\ufffd&\u001f\u0639\t\ufffdN\ufffdhVI0aL+\ufffdJ\u000f\u000f{\ufffd\ufffde\ufffd=\ufffd<2\ufffd\bQ\u001b\ufffd\u001a\u0004>?t\ufffd\ufffd{$\ufffd\ufffdK\ufffd\ufffd\ufffdK\ufffd\ufffd\ufffd4\u0002X\ufffd\ufffd\ufffd\ufffd\fp(\ufffd\ufffd\ufffdV\ufffd#r-1\u000e\ufffd\u000f\ufffd\u001e\ufffdD\ufffd4SIe,h\ufffd8\u0003\ufffdR\ufffd:w\u0019\u001a\u0007\ufffd$\u077c\ufffd\u0346r#\ufffd\ufffd\ufffd\ufffd;4\ufffd\ufffd\ufffd\ufffd\ufffd\t\u0006\ufffd\ufffd\ufffdN\u0013+n\ufffdUM\ufffd*\u001b\ufffdp\ufffd\u001b\ufffdu\ufffdG\u0007\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\t\ufffd\ufffda\ufffdF9\ufffd\"H\ufffd\f\ufffd#d\ufffd\ufffdO\ufffd\ufffd\u001d\ufffd\u01d4\ufffd\ufffd\ufffd\ufffd+\u000f\ufffd]l>9M\ufffd>\ufffd\u001e\ufffd\ufffdY\ufffdrT\ufffdI\ufffd\ufffd\ufffdb\tL\ufffd8^\uc6c8\u007f?+\ufffd\u001d\u0287z\u0006DVBS\ufffd\u0010\r\ufffd\u001f\u07d6\ufffd .\ufffdi\ufffd\ufffd?\ufffd\u04c6\ufffd\ufffd\t\ufffd\u0003:\ufffd9\ufffd\u0010\ufffdTV/dC\t\ufffd\u0019\ufffd\u024ax\ufffd3\ufffd\u0004\ufffdY\\\tD!5Hkh}u0Y\ufffd\r\u000bU\ufffds\ufffd\u001c\ufffd0\ufffdK\u000b\ufffd\ufffd/W\ufffdG\u0006\ufffd+\ufffd\ufffd\ufffd\ufffdi\ufffdT4d9\ufffd\ufffd\ufffd$\ufffd\ufffd\ufffdpb\u0012\ufffd\ufffd0|h\u00100\ufffdH\ufffd\ufffd\ufffdm\ufffd\u0015\ufffd-)\ufffd\u0006\ufffd\u0001\ufffd\ufffdq\ufffda\u0011@\ufffdK\ufffdN\ufffdV\ufffd\ufffd=O\u040eW\ufffd\ufffdxN\ufffd\u0005j\ufffd7\ufffdX\ufffd\ufffd\ufffd*t\ufffd\ufffdCQ\ufffd\ufffd\ufffde\ufffd\ufffd\ufffd#\u0017@\ufffd5\n:\ufffd\u06d0\ufffd\ufffd \u001d\ufffd\ufffdK\ufffd_\ufffd\ufffda\ufffd\ufffdPn\ufffdr\ufffdM\ufffd+\ufffd\ufffd\u0018\ufffd&\u6079\ufffd\ufffd\u062b\u00036\ufffdk\ufffd\ufffd\ufffd\ufffd>\b-L\ufffd\ufffdSUR\ufffd$\ufffd\ufffd_\ufffd\ufffd\u000e\ufffd\ufffd\"&7\u001a\ufffd\ufffdk\ufffd\ufffdG\ufffd\u007f\u0694\u000f\ufffd1\ufffd\ufffd\ufffd\ufffd7e\u0013\ufffd\ufffd\b\ufffd\ufffd.7+\ufffd\ufffd\ufffdtej\ufffd*NA\ufffd\ufffdR\ufffd2\ufffd<w\ufffdC\ufffdH\u0004\ufffd[[J\u0000X.b3+!moy3\ufffd\ufffdf\ufffd\ufffdP\ufffd\u0010*\ufffdx.\u0001+II@t\ufffds\ufffd\ufffd\ufffd\ufffd\ufffdX\ufffd\ufffd\ufffdF-\ufffd\ufffd\ufffd\ufffd\u032a\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffdJ\ufffd\ufffdN\ufffd\ufffd\ufffd\u010d3:j\ufffd\ufffd\ufffd\ufffd;\u0010y\ufffd\ufffd\ufffd\ufffdI\ufffd4Z\ufffd\u0000Vz\ufffd\ufffd\ufffdgN\u001a(\ufffdc\ufffd\ufffd\ufffdK?\u00c5\ufffd~\ufffdHo\ufffd:\ufffd\ufffdo}+\"",
+			"packet_second": 1507248226,
+			"record_type": "packet",
+			"sensor_hostname": "snort",
+			"sensor_id": 0,
+			"sensor_interface": "eth0",
+			"sensor_type": "snort",
+			"source": "/var/log/snort/var/log/snort/snort.u2.1507089434",
+			"source_offset": 118474560,
+			"tags": [
+				"beats_input_raw_event"
+			],
+			"tcp_ack": true,
+			"tcp_checksum": 65428,
+			"tcp_cwr": false,
+			"tcp_data_offset": 5,
+			"tcp_dst_port": 22,
+			"tcp_ece": false,
+			"tcp_fin": false,
+			"tcp_ns": false,
+			"tcp_options": [],
+			"tcp_padding": null,
+			"tcp_psh": true,
+			"tcp_rst": false,
+			"tcp_seq": 743575615,
+			"tcp_src_port": 23447,
+			"tcp_syn": false,
+			"tcp_urg": false,
+			"tcp_urgent": 0,
+			"tcp_window": 2053,
+			"type": "packet"
+		},
+		"_type": "packet"
+	},
+
+
+
+
+
