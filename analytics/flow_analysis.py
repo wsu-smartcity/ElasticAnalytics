@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import re
 import pandas as pd
-
+import json
 #for protocol analysis
 import socket
 
@@ -107,7 +107,7 @@ def PlotDirectedEdgeHistogram(g, edgeAttribute, useLogP1Space=True):
 			plt.show()
 			plt.clf()
 
-def IpTrafficAnalysis(client, ipv4=True):
+def IpTrafficAnalysis(client):
 	"""
 	Using only netflow data, analyze the traffic patterns and packet distribution of the network as a directed graph.
 	"""
@@ -115,17 +115,21 @@ def IpTrafficAnalysis(client, ipv4=True):
 	bucket1 = "src_addr"
 	bucket2 = "dst_addr"
 	
-	if ipv4:
-		bucket1DocValue = "netflow.ipv4_src_addr"
-		bucket2DocValue = "netflow.ipv4_dst_addr"
-	else:
-		bucket1DocValue = "netflow.ipv6_src_addr"
-		bucket2DocValue = "netflow.ipv6_dst_addr"
-	
+	#aggregate ipv4 flows
+	bucket1DocValue = "netflow.ipv4_src_addr"
+	bucket2DocValue = "netflow.ipv4_dst_addr"	
 	qDict = QueryBuilder().BuildDoubleAggregateQuery(bucket1, bucket2, bucket1DocValue, bucket2DocValue, level1BucketType="terms", level2BucketType="terms", level1DocValueType="field", level2DocValueType="field",  size=0)
 	jsonBucket = client.aggregate(index, qDict)
-	aggDict = jsonBucket["aggregations"]
-	print(str(aggDict))
+	aggDict_Ipv4 = jsonBucket["aggregations"]
+	#aggregate ipv6 flows
+	bucket1DocValue = "netflow.ipv6_src_addr"
+	bucket2DocValue = "netflow.ipv6_dst_addr"
+	qDict = QueryBuilder().BuildDoubleAggregateQuery(bucket1, bucket2, bucket1DocValue, bucket2DocValue, level1BucketType="terms", level2BucketType="terms", level1DocValueType="field", level2DocValueType="field",  size=0)
+	jsonBucket = client.aggregate(index, qDict)
+	aggDict_Ipv6 = jsonBucket["aggregations"]
+	#aggregate the ipv4/6 dictionaries together
+	aggDict = aggDict_Ipv4
+	aggDict[bucket1]["buckets"] += aggDict_Ipv6[bucket1]["buckets"]
 	
 	labelVertices=True
 	labelEdges=False
@@ -172,7 +176,8 @@ def ProtocolAnalysis(client):
 	index = "netflow*"
 	jsonBucket = client.aggregate(index, qDict)
 	aggDict = jsonBucket["aggregations"]
-	print(str(aggDict))
+	print(str(jsonBucket))
+	#print(str(aggDict))
 	
 	#aggregate all buckets together per protocol only
 	protocolHistogram = AggregateProtocols(aggDict, bucket1, bucket2, bucket3)
@@ -184,7 +189,7 @@ def ProtocolAnalysis(client):
 			proto = socket.getservbyport(pair[0])
 			label = proto+":"+label
 		except:
-			pass
+			print("Unable to retrieve protocol name for "+label)
 		labels.append(label)
 	print(protocolHistogram)
 	
@@ -196,15 +201,14 @@ def ProtocolAnalysis(client):
 	#hist.plot()
 	plt.tight_layout()
 	plt.show()
-	
 	plt.clf()
 	
 def main():
 	servAddr = "http://192.168.0.91:80/elasticsearch"
 	client = Client(servAddr)
 	print(str(client.listIndices()))
-	IpTrafficAnalysis(client)
-	#ProtocolAnalysis(client)
+	#IpTrafficAnalysis(client)
+	ProtocolAnalysis(client)
 	
 if __name__ == "__main__":
 	main()

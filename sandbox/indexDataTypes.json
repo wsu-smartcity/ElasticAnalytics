@@ -15,8 +15,8 @@ Netflow:
 			"in_pkts": 1,
 			"input_snmp": 0,
 			"ip_protocol_version": 4,
-			"ipv4_dst_addr": "192.168.2.10",
 			"ipv4_src_addr": "192.168.2.50",
+			"ipv4_dst_addr": "192.168.2.10",
 			"l4_dst_port": 2919,
 			"l4_src_port": 63039,
 			"last_switched": "2016-07-24T23:07:56.999Z",
@@ -27,6 +27,11 @@ Netflow:
 		}
 	},
 
+	
+	
+	
+	
+	
 	
 Bro:
 	{
