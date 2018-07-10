@@ -85,10 +85,58 @@ class NetflowModelBuilder(object):
 		aggDict = aggDict_Ipv4
 		aggDict[bucket1]["buckets"] += aggDict_Ipv6[bucket1]["buckets"]
 		
+		return aggDict
+
+	def PlotDirectedEdgeHistogram(self, g, edgeAttribute="weight", useLogP1Space=True):
+		"""
+		Given an igraph object @g with directed edges decorated with a "weight" scalar attribute,
+		outputs histograms based on the edge relations for each src-dst pair. this is old code but embeds
+		a useful analysis pattern of building a weighted, directed graph, then examining the distribution of
+		weights for each set of neighbors.
+		"""
+		series = []
+		for e in g.es:
+			src = g.vs[e.source]["name"]
+			dest = g.vs[e.target]["name"]
+			if useLogP1Space:
+				edgeValue = np.log(e[edgeAttribute])+1  #add one, simply for plotting
+			else:
+				edgeValue = e[edgeAttribute]
+			pair = (src+"--"+dest, edgeValue)
+			series.append(pair)
+		
+		print(str(series))
+		df = pd.Series([pair[1] for pair in series], index=[pair[0] for pair in series])
+		print(str(df))
+		print("Plotting...")
+		df.sort_values().plot(kind='bar',title="Log-Space Host-Host Flow Frequency")
+		#hist.plot()
+		plt.tight_layout()
+		plt.show()
+		plt.clf()
+		
+		#plot outgoing flow distributions, only for vertices with more than one outgoing edge
+		for v in g.vs:
+			edges = g.es.select(_source=v.index)
+			if len(edges) > 1:
+				print(str(len(edges)))
+				neighborFrequencies = [(g.vs[e.target]["name"], e["weight"]) for e in edges]
+				print("NEIGHBORS: "+str(neighborFrequencies))
+				series = pd.Series([pair[1] for pair in neighborFrequencies], index=[pair[0] for pair in neighborFrequencies])
+				series.sort_values().plot(kind='bar',title=v["name"]+" Neighbor Flow Frequency")
+				plt.tight_layout()
+				plt.show()
+				plt.clf()
+		
+	def BuildIpTrafficGraphicalModel(self, ipTrafficModel):
+		"""
+		Unclean wrapper for converting an ip traffic model from BuildIpTrafficModel() into an 
+		igraph object and plotting it.
+		"""
 		labelVertices=True
 		labelEdges=False
 		#aggDict = {u'src_addr': {u'buckets': [{u'dst_addr': {u'buckets': [{u'key': u'192.168.1.160', u'doc_count': 1061347}, {u'key': u'192.168.1.11', u'doc_count': 14857}, {u'key': u'192.168.0.12', u'doc_count': 14852}, {u'key': u'192.168.1.102', u'doc_count': 13044}, {u'key': u'239.255.255.250', u'doc_count': 7607}, {u'key': u'192.168.0.11', u'doc_count': 7382}, {u'key': u'192.168.0.91', u'doc_count': 5283}, {u'key': u'192.168.3.216', u'doc_count': 1730}, {u'key': u'192.168.0.1', u'doc_count': 625}, {u'key': u'192.168.1.118', u'doc_count': 257}], u'sum_other_doc_count': 544, u'doc_count_error_upper_bound': 1}, u'key': u'192.168.2.10', u'doc_count': 1127528}, {u'dst_addr': {u'buckets': [{u'key': u'192.168.2.10', u'doc_count': 1061347}, {u'key': u'239.255.255.250', u'doc_count': 14710}, {u'key': u'192.168.0.14', u'doc_count': 605}, {u'key': u'255.255.255.255', u'doc_count': 315}, {u'key': u'224.0.0.1', u'doc_count': 312}, {u'key': u'224.0.0.252', u'doc_count': 264}, {u'key': u'224.0.0.251', u'doc_count': 9}, {u'key': u'224.0.1.129', u'doc_count': 2}, {u'key': u'239.192.152.143', u'doc_count': 2}], u'sum_other_doc_count': 0, u'doc_count_error_upper_bound': 0}, u'key': u'192.168.1.160', u'doc_count': 1077566}, {u'dst_addr': {u'buckets': [{u'key': u'192.168.0.1', u'doc_count': 104641}, {u'key': u'239.255.255.250', u'doc_count': 81122}, {u'key': u'224.0.0.252', u'doc_count': 24754}, {u'key': u'172.217.3.163', u'doc_count': 20530}, {u'key': u'172.217.3.174', u'doc_count': 19105}, {u'key': u'134.121.120.167', u'doc_count': 16311}, {u'key': u'192.168.3.255', u'doc_count': 8152}, {u'key': u'64.4.54.254', u'doc_count': 7700}, {u'key': u'64.71.168.217', u'doc_count': 7127}, {u'key': u'192.168.1.114', u'doc_count': 6920}], u'sum_other_doc_count': 187585, u'doc_count_error_upper_bound': 1754}, u'key': u'192.168.0.14', u'doc_count': 483947}, {u'dst_addr': {u'buckets': [{u'key': u'192.168.0.14', u'doc_count': 120591}, {u'key': u'255.255.255.255', u'doc_count': 2397}, {u'key': u'239.255.255.250', u'doc_count': 508}, {u'key': u'192.168.2.10', u'doc_count': 247}, {u'key': u'192.168.3.224', u'doc_count': 79}, {u'key': u'224.0.0.1', u'doc_count': 63}, {u'key': u'224.0.0.252', u'doc_count': 14}, {u'key': u'192.168.0.109', u'doc_count': 10}, {u'key': u'192.168.0.111', u'doc_count': 4}, {u'key': u'192.168.0.16', u'doc_count': 4}], u'sum_other_doc_count': 7, u'doc_count_error_upper_bound': 0}, u'key': u'192.168.0.1', u'doc_count': 123924}, {u'dst_addr': {u'buckets': [{u'key': u'239.255.255.250', u'doc_count': 87186}, {u'key': u'192.168.2.10', u'doc_count': 21272}, {u'key': u'192.168.3.255', u'doc_count': 8093}, {u'key': u'255.255.255.255', u'doc_count': 2206}, {u'key': u'192.168.0.14', u'doc_count': 78}, {u'key': u'224.0.0.252', u'doc_count': 2}], u'sum_other_doc_count': 0, u'doc_count_error_upper_bound': 0}, u'key': u'192.168.0.12', u'doc_count': 118837}, {u'dst_addr': {u'buckets': [{u'key': u'239.255.255.250', u'doc_count': 69383}, {u'key': u'192.168.3.255', u'doc_count': 11231}, {u'key': u'192.168.0.14', u'doc_count': 200}, {u'key': u'192.168.2.10', u'doc_count': 64}, {u'key': u'224.0.0.252', u'doc_count': 35}, {u'key': u'255.255.255.255', u'doc_count': 4}], u'sum_other_doc_count': 0, u'doc_count_error_upper_bound': 0}, u'key': u'192.168.0.13', u'doc_count': 80917}, {u'dst_addr': {u'buckets': [{u'key': u'239.255.255.250', u'doc_count': 37482}, {u'key': u'192.168.2.10', u'doc_count': 18645}, {u'key': u'192.168.15.255', u'doc_count': 7153}, {u'key': u'192.168.3.255', u'doc_count': 6852}, {u'key': u'255.255.255.255', u'doc_count': 3385}, {u'key': u'192.168.0.14', u'doc_count': 107}, {u'key': u'224.0.0.251', u'doc_count': 28}, {u'key': u'224.0.0.252', u'doc_count': 10}, {u'key': u'192.168.1.111', u'doc_count': 5}, {u'key': u'224.0.1.129', u'doc_count': 1}], u'sum_other_doc_count': 0, u'doc_count_error_upper_bound': 0}, u'key': u'192.168.1.102', u'doc_count': 73668}, {u'dst_addr': {u'buckets': [{u'key': u'239.255.255.250', u'doc_count': 32847}, {u'key': u'192.168.2.10', u'doc_count': 21241}, {u'key': u'192.168.3.255', u'doc_count': 12561}, {u'key': u'255.255.255.255', u'doc_count': 3511}, {u'key': u'192.168.0.14', u'doc_count': 355}, {u'key': u'192.168.2.101', u'doc_count': 9}, {u'key': u'192.168.2.102', u'doc_count': 9}, {u'key': u'192.168.2.103', u'doc_count': 9}, {u'key': u'192.168.2.107', u'doc_count': 8}, {u'key': u'192.168.2.108', u'doc_count': 8}], u'sum_other_doc_count': 35, u'doc_count_error_upper_bound': 0}, u'key': u'192.168.1.11', u'doc_count': 70593}, {u'dst_addr': {u'buckets': [{u'key': u'239.255.255.250', u'doc_count': 48167}, {u'key': u'192.168.1.255', u'doc_count': 7814}, {u'key': u'255.255.255.255', u'doc_count': 2350}, {u'key': u'224.0.0.252', u'doc_count': 80}, {u'key': u'192.168.3.255', u'doc_count': 3}, {u'key': u'224.0.0.251', u'doc_count': 3}, {u'key': u'192.168.0.14', u'doc_count': 1}, {u'key': u'192.168.1.101', u'doc_count': 1}], u'sum_other_doc_count': 0, u'doc_count_error_upper_bound': 0}, u'key': u'192.168.1.14', u'doc_count': 58419}, {u'dst_addr': {u'buckets': [{u'key': u'239.255.255.250', u'doc_count': 31456}, {u'key': u'255.255.255.255', u'doc_count': 8959}, {u'key': u'192.168.3.255', u'doc_count': 7454}, {u'key': u'192.168.2.10', u'doc_count': 7387}, {u'key': u'192.168.0.14', u'doc_count': 187}, {u'key': u'224.0.0.252', u'doc_count': 4}, {u'key': u'192.168.0.16', u'doc_count': 3}, {u'key': u'192.168.2.101', u'doc_count': 1}, {u'key': u'192.168.2.102', u'doc_count': 1}, {u'key': u'192.168.2.103', u'doc_count': 1}], u'sum_other_doc_count': 6, u'doc_count_error_upper_bound': 0}, u'key': u'192.168.0.11', u'doc_count': 55459}], u'sum_other_doc_count': 410259, u'doc_count_error_upper_bound': 4257}}
-		g = self._ipAggregateToNetworkGraph(aggDict, bucket1, bucket2, labelVertices, labelEdges)
+		g = self._ipModelToNetworkGraph(aggDict, bucket1, bucket2, labelVertices, labelEdges)
 		g.write_graphml("./ip_traffic.graphml")
 		graphPlot = PlotIpTrafficModel(g, labelVertices, labelEdges)
 		graphPlot.save("ipTraffic.png")
@@ -144,6 +192,17 @@ class NetflowModelBuilder(object):
 
 		return aggDict
 	
+	def BuildPacketSizeModel(self, sizeAttrib="in_bytes"):
+		"""
+		Builds a triply-nested model of packet size (either in bytes or #packets in flow) determined
+		or even src-ip -> dst-ip -> protocol -> port, but I'm keeping it simple for now.
+		by src-ip -> dst-ip -> port -> packet_size. This could estimate by src-ip -> dst-ip -> protocol instead,
+		
+		Returns: A triply-nested dict of dicts, as d[src_ip][dst_ip][port][]
+		"""
+		
+	
+	
 	def BuildFlowModel(self):
 		"""
 		Builds a very specific kind of flow model, represented as a graph with edges and
@@ -157,10 +216,13 @@ class NetflowModelBuilder(object):
 		protocolModel = self.BuildProtocolModel(bucket="protocol", ipVersion="all")
 		
 		#aggregate host-to-host traffic by layer-4 dest port. Some, but not all, dest-port usage is indicative of the application layer protocol (ftp, http, etc).
-		portModel = self.BuildProtocolModel(bucket="protocol", ipVersion="all")
+		portModel = self.BuildProtocolModel(bucket="port", ipVersion="all")
 		
 		#aggregate host-to-host port traffic by packet size
 		pktSizeModel = self.BuildPacketSizeModel()
+		
+		#aggregate host-to-host port traffic by time-stamp
+		pktSizeModel = self.BuildFlowTimestampModel()
 		
 		#FUTURE
 		#aggregate host-to-host protocol traffic by packet size

@@ -1,3 +1,11 @@
+http://192.168.0.91/app/kibana#/dev_tools/console?_g=()
+https://car.mitre.org/wiki/Main_Page
+https://people.orie.cornell.edu/sid/NewForLinking/StockholmSid.pdf
+http://www.ecs.umass.edu/ece/wolf/pubs/gis2007.pdf
+http://ids.cs.columbia.edu/sites/default/files/impact-syn.pdf
+https://pdfs.semanticscholar.org/2109/acebfd0a52c9d0046abf6efa164a968f23c6.pdf
+http://www.cs.columbia.edu/~jebara/papers/cucs-029-11.pdf
+
 GET netflow*/_search
 {
   "aggs":{
