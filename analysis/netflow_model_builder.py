@@ -19,9 +19,11 @@ The primary purpose is to have a class that:
 
 from elastic_client import ElasticClient
 from elastic_query_builder import QueryBuilder
+from netflow_model import NetFlowModel
 
 import json
 import igraph
+import collections
 
 class NetflowModelBuilder(object):
 	def __init__(self, client):
@@ -140,13 +142,16 @@ class NetflowModelBuilder(object):
 				plt.show()
 				plt.clf()
 		
-	def BuildIpTrafficGraphicalModel(self, ipTrafficModel, outerKey="src_addr", innerKey="dst_addr", labelVertices=False, labelEdges=False):
+	def BuildIpTrafficGraphicalModel(self, ipTrafficModel, outerKey="src_addr", innerKey="dst_addr", labelVertices=True, labelEdges=False):
 		"""
 		Converts an ip-traffic model into an igraph Graph object. Graph objects can store attributes on edges, vertices, etc,
 		so an entire graphical data structure can be built on top of them. Beware that some of that info may not survive its
 		spotty serial/deserialization methods, so it might be preferable to implement a ToJson() method instead.
 		
 		@ipTrafficModel: A aggs-dict as returned by an aggregate-type query to the netflow indices.
+		@outerKey: The outer key for the returned dict; just use "src_addr"
+		@innerKey: The inner key for the returned dict; just use "dst_addr"
+		@labelVertices/Edges: Just for visualization, whether or not to define @vertex_label and @edge_label at each vertex/edge.
 		"""
 		g = igraph.Graph(directed=True)
 		es = [] #store as: (src,dst,edge_weight) threeples
@@ -158,15 +163,16 @@ class NetflowModelBuilder(object):
 				count = innerBucket["doc_count"]
 				es.append((srcKey,dstKey,count))
 
+		#build the vertex set
 		vs = [edge[0] for edge in es]
 		vs += [edge[1] for edge in es]
-		vs = list(set(vs))
-		
+		vs = list(set(vs)) #uniquify the vertices
 		g.add_vertices(vs)
 		if labelVertices:
 			for v in g.vs:
 				v["vertex_label"] = v["name"]
 
+		#add the edges
 		for edge in es:
 			g.add_edge(edge[0], edge[1], weight=edge[2])
 		
@@ -222,6 +228,7 @@ class NetflowModelBuilder(object):
 			jsonBucket = self._esClient.aggregate(index, qDict)
 			aggDict_Ipv4 = jsonBucket["aggregations"]
 			#print(str(aggDict_Ipv4))
+			print(json.dumps(aggDict_Ipv4, indent=1))
 
 		#aggregate host-host ipv6 traffic by port/protocol
 		if ipVersion.lower() in ["ipv6", "all"]:
@@ -238,7 +245,32 @@ class NetflowModelBuilder(object):
 		elif ipVersion.lower() == "ipv6":
 			aggDict = aggDict_Ipv6
 
-		return aggDict
+		#convert the response to something easier to work with, and keys as [src][dst] -> protocol-histogram
+		d = dict()
+		for outerBucket in aggDict[bucket1]["buckets"]:
+			src_addr = outerBucket["key"]
+			src_dict = d.setdefault(src_addr, dict())
+			for innerBucket in outerBucket[bucket2]["buckets"]:
+				dest_addr = innerBucket["key"]
+				dest_dict = src_dict.setdefault(dest_addr, dict())
+				#convert these innermost buckets to a histogram from the elastic-aggs query json representation
+				hist = { pair["key"]:pair["doc_count"] for pair in innerBucket[bucket3]["buckets"] }
+				dest_dict[bucket3] = hist
+
+		#print("DDD: "+json.dumps(d, indent=2))
+				
+		return d
+		
+	def _esAggDictToPyDict(self, aggDict, bucketKeyList):
+		"""
+		The elastic-search aggs query response is a dictionary with a bunch of metadata we don't currently need.
+		This converts it into a regular python dictionary, removing the stuff we don't need.
+		"""
+		d = dict()
+		
+		for key in bucketKeyList:
+			pass
+		return d
 
 	def BuildFlowSizeModel(self, ipVersion="all", protocolBucket="port", sizeAttrib="in_bytes"):
 		"""
@@ -296,7 +328,7 @@ class NetflowModelBuilder(object):
 			
 		return aggDict
 
-	def BuildFlowModel(self):
+	def BuildNetFlowModel(self):
 		"""
 		Builds a very specific kind of flow model, represented as a graph with edges and
 		vertices containing further information.
@@ -305,20 +337,49 @@ class NetflowModelBuilder(object):
 		#query the netflow indices for all traffic between hosts
 		ipModel = self.BuildIpTrafficModel(ipVersion="all")
 		g = self.BuildIpTrafficGraphicalModel(ipModel)
+		flowModel = NetFlowModel(g)
 		#self.PlotIpTrafficModel(g)
+		
 		
 		#aggregate host-to-host traffic by ip protocol (icmp traffic, though infrequent, is not always safe: ping+traceroute are used for recon, and other methods use icmp for key transmission
 		protocolModel = self.BuildProtocolModel(ipVersion="all", protocolBucket="protocol")
-		
+		print(str(protocolModel))
+		if not flowModel.MergeEdgeModel(protocolModel, "protocol"):
+			print("ERROR could not merge protocol model into flow model")
+			print(str(protocolModel))
+		"""
 		#aggregate host-to-host traffic by layer-4 dest port. Some, but not all, dest-port usage is indicative of the application layer protocol (ftp, http, etc).
 		portModel = self.BuildProtocolModel(ipVersion="all", protocolBucket="port")
+		if not flowModel.MergeEdgeModel(portModel, "port"):
+			print("ERROR could not merge port model into flow model")
 		
 		#aggregate host-to-host port traffic by packet size
 		pktSizeModel = self.BuildFlowSizeModel(ipVersion="all", protocolBucket="port", sizeAttrib="in_bytes")
+		if not flowModel.MergeEdgeModel(pktSizeModel, "pkt_size"):
+			print("ERROR could not merge port model into flow model")
 		
 		#FUTURE
 		#aggregate host-to-host port traffic by time-stamp
 		#pktSizeModel = self.BuildFlowTimestampModel()
+		"""
+		print("Num ip addrs: {}".format(len(g.vs)))
+		print("Target in addrs: {}".format("207.241.22" in str(protocolModel)))
+		addrs = set()
+		for src in protocolModel.keys():
+			addrs.add(src)
+			for dst in protocolModel.keys():
+				addrs.add(src)
+				
+		with open("addrs.txt","w+") as ofile:
+			for addr in addrs:
+				ofile.write(addr+"\n")
+				
+		for addr in addrs:
+			if "31.13." in addr:
+				print("Hit: {}".format(addr))
+		
+		print("Target in addrs: {}".format("31.13.76" in str(protocolModel)))
+		
 		
 		return 1
 		
@@ -326,7 +387,7 @@ def main():
 	servAddr = "http://192.168.0.91:80/elasticsearch"
 	client = ElasticClient(servAddr)
 	builder = NetflowModelBuilder(client)
-	builder.BuildFlowModel()
+	model = builder.BuildNetFlowModel()
 		
 if __name__ == "__main__":
 	main()

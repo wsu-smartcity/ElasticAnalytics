@@ -22,6 +22,8 @@ class QueryBuilder(object):
 		d[bucketName] = 	{
 								bucketType: {
 									docValueType: docValue,
+									#docValueType: docValue,
+									"size":40000
 								}
 							}
 		return d
@@ -38,15 +40,16 @@ class QueryBuilder(object):
 		"""
 		qDict = {
 			"size": size,
+			"aggs" : {}
 		}
 		qDict["aggs"] = self._buildAggBucketDict(bucketName, bucketType, docValueType, docValue, qDict)
 
 		return qDict
 	
-	def TestBuildDeepAggsQuery(self):
+	def TestBuildNestedAggsQuery(self):
 		#bucketList = [("src_ip","netflow.ipv4_src_addr"), ("dst_ip","netflow.ipv4_dst_addr"), ("port","netflow.l4_dst_port"), ("pkt_size","netflow.in_bytes")]
 		bucketList = [("src_ip","netflow.ipv4_src_addr"), ("dst_ip","netflow.ipv4_dst_addr"), ("port","netflow.l4_dst_port")]
-		aggDict = self.BuildDeepAggsQuery(bucketList)
+		aggDict = self.BuildNestedAggsQuery(bucketList)
 		print(str(aggDict.keys()))
 		print(str(aggDict.values()))
 		self._printDictRecursive(aggDict,"")
@@ -57,16 +60,26 @@ class QueryBuilder(object):
 		print(str(aggDict1==aggDict2))
 		
 		
-	def BuildDeepAggsQuery(self, bucketList, size=0):
+	def BuildNestedAggsQuery(self, bucketList, size=0, filterQuery={"match_all":{}}):
 		"""
 		For aggs queries deeper than three levels. Pass in @bucketList, a list of tuples of the form
 		(bucketName, docValue, bucketType, docValueType). The 0th element of this list will
 		be treated as the outermost bucket description, and the nth element as the innermost.
 		For example to aggregate by src-ip, dst-ip, port, then packet size, one would pass
 		[("src_ip","netflow.ipv4_src_addr), ("dst_ip","netflow.ipv4_dst_addr"), ("port","netflow.l4_dst_port"), ("pkt_size","netflow.in_bytes")]
+		
+		@bucketList: A list of bucket names, fielsds, types, as described above
+		@size: How many docs to return; will nearly always be 0
+		@filterQuery: The outermost query to execute before bucketing; elastic defaults to querying all docs, as does the default param here.
 		"""
 
-		nestedDict = {"size":size}
+		nestedDict = {
+			"size": size,
+			"query":{
+				"match_all": {}
+			},
+			"aggs" : None #overwritten below
+		}
 		
 		aggDict = nestedDict
 		for tup in bucketList:
@@ -86,6 +99,8 @@ class QueryBuilder(object):
 			aggDict["aggs"] = bucket
 			aggDict = bucket[bucketName]
 		
+		print("Agg query: "+str(json.dumps(nestedDict, indent=2)))
+		
 		return nestedDict
 
 	def _printDictRecursive(self, d, prefix):
@@ -98,33 +113,6 @@ class QueryBuilder(object):
 				print(prefix+"{")
 				self._printDictRecursive(d[k],prefix+"  ")
 				print(prefix+"}")
-
-	def _buildDeepAggsQuery(self, bucketList, aggDict):
-		"""
-		Simple tail-recursion implementation for nested queries. Might as well keep,
-		a little more readable than loop version.
-		"""
-		if len(bucketList) == 0:
-			return
-	
-		#pop first bucket spec (a tuple of (@bucketName, @docValue, @bucketType, @docValueType))
-		tup = bucketList[0]
-		bucketList = bucketList[1:]
-		bucketName = tup[0]
-		docValue = tup[1]
-		#default/most-common values for these variables in an aggs query
-		bucketType = "terms"
-		docValueType = "field"
-		#override bucketType and docValueType values if in @tup
-		if len(tup) >= 3:
-			bucketType = tup[2]
-		if len(tup) >= 4:
-			docValueType = tup[3]
-		#build this bucket and insert into aggDict
-		bucket = self._buildAggBucketDict(bucketName, bucketType, docValueType, docValue, qDict)
-		nestedDict["aggs"] = bucket
-		#tail recurse
-		self._buildDeepAggsQuery(bucketList, aggDict)
 			
 	def BuildAllDocQuery(self):
 		return {'query': {'match_all':{}}}
@@ -141,7 +129,7 @@ class QueryBuilder(object):
 										#level2Filter = None, \
 										size=0):
 		"""
-		A fully-paramterized convenience wrapper around BuildDeepAggsQuery() for double-nested queries.
+		A fully-paramterized convenience wrapper around BuildNestedAggsQuery() for double-nested queries.
 		Returns a double-nested aggregates query per the passed params.
 		The simplest case of using a nested *aggs* query, similar to a double GROUP-BY query in sql.
 		
@@ -157,7 +145,7 @@ class QueryBuilder(object):
 		"""
 		
 		bucketList = [(level1BucketName, level1DocValue, level1BucketType, level1DocValueType), (level2BucketName, level2DocValue, level2BucketType, level2DocValueType)]
-		qDict = self.BuildDeepAggsQuery(bucketList, size)
+		qDict = self.BuildNestedAggsQuery(bucketList, size)
 			
 		return qDict
 
@@ -178,17 +166,17 @@ class QueryBuilder(object):
 										#level3Filter = None, \
 										size=0):
 		"""
-		A fully-paramterized convenience wrapper around BuildDeepAggsQuery() for triple-nested queries.
+		A fully-paramterized convenience wrapper around BuildNestedAggsQuery() for triple-nested queries.
 		Returns a triply-nested aggregates query per the passed params.
 		"""
 		bucketList = [(level1BucketName, level1DocValue, level1BucketType, level1DocValueType), (level2BucketName, level2DocValue, level2BucketType, level2DocValueType), (level3BucketName, level3DocValue, level3BucketType, level3DocValueType)]
-		qDict = self.BuildDeepAggsQuery(bucketList, size)
+		qDict = self.BuildNestedAggsQuery(bucketList, size)
 			
 		return qDict
 		
 def main():
 	builder = QueryBuilder()
-	builder.TestBuildDeepAggsQuery()
+	builder.TestBuildNestedAggsQuery()
 		
 if __name__ == "__main__":
 	main()
