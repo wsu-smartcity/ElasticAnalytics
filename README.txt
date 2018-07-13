@@ -5,8 +5,4 @@ once those distributions, tools, and methods are understood better.
 This project is currently just a pre-alpha for requirements analyses and data exploration,
 and will be rolled into a cleaner project-repo once requirements are better known.
 
-This code uses pandas, numpy, and igraph...and probably others, which are incredibly useful
-tools. For visualization, not so much. A good resource is 'Python for Data Analysis', an
-excellent reference work on numpy, pandas, and more.
-
 
