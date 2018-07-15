@@ -60,12 +60,14 @@ class NetflowModelBuilder(object):
 
 		return graphPlot
 
-	def BuildIpTrafficModel(self, ipVersion="all"):
+	def BuildIpTrafficModel(self, ipVersion="all", ipBlacklist=[], ipWhitelist=[]):
 		"""
 		Using only netflow volume data, analyze the traffic patterns of the network, as a directed graph.
 		
 		@ipVersion: Selector for either ipv4 traffic, ipv6 traffic, or both aggregated together. Valid values
 					are "ipv6", "ipv4", or "all".
+		@ipBlacklist: A list of ip's to exclude from the network description
+		@ipWhitelist: A whitelist of ip's to include; note that @ipBlacklist and @ipWhitelist are mutually exclusive; only one should be passed, if either. 
 		
 		Returns: An igraph Graph object with vertices representing hosts by ipv4/ipv6 address, and edges
 		representing the existence of traffic between them. The edges are decorated with @weight, representing
@@ -75,18 +77,47 @@ class NetflowModelBuilder(object):
 		bucket1 = "src_addr"
 		bucket2 = "dst_addr"
 		
+		options = dict()
+		if len(ipBlacklist) > 0:
+			options["exclude"] = ipBlacklist
+		if len(ipWhitelist) > 0:
+			options["include"] = ipWhitelist
+		
 		#aggregate ipv4 flows
 		if ipVersion.lower() in ["ipv4","all"]:
 			bucket1DocValue = "netflow.ipv4_src_addr"
 			bucket2DocValue = "netflow.ipv4_dst_addr"
-			qDict = self._queryBuilder.BuildDoubleAggregateQuery(bucket1, bucket2, bucket1DocValue, bucket2DocValue, level1BucketType="terms", level2BucketType="terms", level1DocValueType="field", level2DocValueType="field",  size=0)
+			options = options if len(options) > 0 else None
+			qDict = self._queryBuilder.BuildDoubleAggregateQuery(
+																	bucket1, 
+																	bucket2, 
+																	bucket1DocValue, 
+																	bucket2DocValue, 
+																	level1BucketType="terms", 
+																	level2BucketType="terms", 
+																	level1DocValueType="field",
+																	level2DocValueType="field",
+																	level1Filter=options,
+																	level2Filter=options,
+																	size=0)
 			jsonBucket = self._esClient.aggregate(index, qDict)
 			aggDict_Ipv4 = jsonBucket["aggregations"]
 		#aggregate ipv6 flows
 		if ipVersion.lower() in ["ipv6", "all"]:
 			bucket1DocValue = "netflow.ipv6_src_addr"
 			bucket2DocValue = "netflow.ipv6_dst_addr"
-			qDict = self._queryBuilder.BuildDoubleAggregateQuery(bucket1, bucket2, bucket1DocValue, bucket2DocValue, level1BucketType="terms", level2BucketType="terms", level1DocValueType="field", level2DocValueType="field",  size=0)
+			options = options if len(options) > 0 else None
+			qDict = self._queryBuilder.BuildDoubleAggregateQuery(	bucket1,
+																	bucket2,
+																	bucket1DocValue,
+																	bucket2DocValue,
+																	level1BucketType="terms",
+																	level2BucketType="terms",
+																	level1DocValueType="field",
+																	level2DocValueType="field",
+																	level1Filter=options,
+																	level2Filter=options,
+																	size=0)
 			jsonBucket = self._esClient.aggregate(index, qDict)
 			aggDict_Ipv6 = jsonBucket["aggregations"]
 
@@ -197,7 +228,7 @@ class NetflowModelBuilder(object):
 		return g
 		"""
 
-	def BuildProtocolModel(self, ipVersion="all", protocolBucket="port"):
+	def BuildProtocolModel(self, ipVersion="all", protocolBucket="port", ipBlacklist=[], ipWhitelist=[]):
 		"""
 		Builds a triply-nested model of traffic via the following: src_ip -> dst_ip -> port/protocol.
 		Or rather simply, gets the distribution of traffic per each src-dst ip edge in the network per
@@ -214,8 +245,14 @@ class NetflowModelBuilder(object):
 		index = "netflow*"
 		bucket1 = "src_addr"
 		bucket2 = "dst_addr"
-		bucket3 = "protocol"
-
+		bucket3 = "protocol"		
+		options = dict()
+		if len(ipBlacklist) > 0:
+			options["exclude"] = ipBlacklist
+		if len(ipWhitelist) > 0:
+			options["include"] = ipWhitelist
+		options = options if len(options) > 0 else None
+		
 		#see header. @port must be "port" or "protocol".
 		if protocolBucket.lower() == "port":
 			bucket3Key = "netflow.l4_dst_port"
@@ -224,7 +261,21 @@ class NetflowModelBuilder(object):
 
 		#aggregate host-host ipv4 traffic by port/protocol
 		if ipVersion.lower() in ["ipv4","all"]:
-			qDict = self._queryBuilder.BuildTripleAggregateQuery(bucket1, bucket2, bucket3, "netflow.ipv4_src_addr", "netflow.ipv4_dst_addr", "netflow.l4_dst_port", level1BucketType="terms", level2BucketType="terms", level3BucketType="terms", level1DocValueType="field", level2DocValueType="field", level3DocValueType="field", size=0)
+			qDict = self._queryBuilder.BuildTripleAggregateQuery(	bucket1, 
+																	bucket2, 
+																	bucket3, 
+																	"netflow.ipv4_src_addr",
+																	"netflow.ipv4_dst_addr",
+																	"netflow.l4_dst_port",
+																	level1BucketType="terms",
+																	level2BucketType="terms",
+																	level3BucketType="terms",
+																	level1DocValueType="field",
+																	level2DocValueType="field",
+																	level3DocValueType="field",
+																	level1Filter=options, #filter ips by src-addr
+																	level2Filter=options, #filter ips by dest-addr
+																	size=0)
 			jsonBucket = self._esClient.aggregate(index, qDict)
 			aggDict_Ipv4 = jsonBucket["aggregations"]
 			#print(str(aggDict_Ipv4))
@@ -232,7 +283,21 @@ class NetflowModelBuilder(object):
 
 		#aggregate host-host ipv6 traffic by port/protocol
 		if ipVersion.lower() in ["ipv6", "all"]:
-			qDict = self._queryBuilder.BuildTripleAggregateQuery(bucket1, bucket2, bucket3, "netflow.ipv6_src_addr", "netflow.ipv6_dst_addr", "netflow.l4_dst_port", level1BucketType="terms", level2BucketType="terms", level3BucketType="terms", level1DocValueType="field", level2DocValueType="field", level3DocValueType="field", size=0)
+			qDict = self._queryBuilder.BuildTripleAggregateQuery(	bucket1,
+																	bucket2,
+																	bucket3,
+																	"netflow.ipv6_src_addr",
+																	"netflow.ipv6_dst_addr",
+																	"netflow.l4_dst_port",
+																	level1BucketType="terms",
+																	level2BucketType="terms",
+																	level3BucketType="terms",
+																	level1DocValueType="field",
+																	level2DocValueType="field",
+																	level3DocValueType="field",
+																	level1Filter=options, #filter ips by src-addr
+																	level2Filter=options, #filter ips by dest-addr
+																	size=0)
 			jsonBucket = self._esClient.aggregate(index, qDict)
 			aggDict_Ipv6 = jsonBucket["aggregations"]
 
@@ -335,14 +400,14 @@ class NetflowModelBuilder(object):
 		"""
 		
 		#query the netflow indices for all traffic between hosts
-		ipModel = self.BuildIpTrafficModel(ipVersion="all")
+		ipBlacklist = ["192.168.0.14"]
+		ipModel = self.BuildIpTrafficModel(ipVersion="all", ipBlacklist=ipBlacklist)
 		g = self.BuildIpTrafficGraphicalModel(ipModel)
 		flowModel = NetFlowModel(g)
-		#self.PlotIpTrafficModel(g)
-		
+		self.PlotIpTrafficModel(g)
 		
 		#aggregate host-to-host traffic by ip protocol (icmp traffic, though infrequent, is not always safe: ping+traceroute are used for recon, and other methods use icmp for key transmission
-		protocolModel = self.BuildProtocolModel(ipVersion="all", protocolBucket="protocol")
+		protocolModel = self.BuildProtocolModel(ipVersion="all", protocolBucket="protocol", ipBlacklist=ipBlacklist)
 		print(str(protocolModel))
 		if not flowModel.MergeEdgeModel(protocolModel, "protocol"):
 			print("ERROR could not merge protocol model into flow model")
@@ -362,22 +427,24 @@ class NetflowModelBuilder(object):
 		#aggregate host-to-host port traffic by time-stamp
 		#pktSizeModel = self.BuildFlowTimestampModel()
 		"""
+		
 		print("Num ip addrs: {}".format(len(g.vs)))
 		print("Target in addrs: {}".format("207.241.22" in str(protocolModel)))
 		addrs = set()
 		for src in protocolModel.keys():
 			addrs.add(src)
-			for dst in protocolModel.keys():
+			for dst in protocolModel[src].keys():
 				addrs.add(src)
-				
+		"""
 		with open("addrs.txt","w+") as ofile:
 			for addr in addrs:
 				ofile.write(addr+"\n")
-				
-		for addr in addrs:
+		"""	
+		for addr in sorted(list(addrs)):
 			if "31.13." in addr:
 				print("Hit: {}".format(addr))
-		
+			print(addr)
+			
 		print("Target in addrs: {}".format("31.13.76" in str(protocolModel)))
 		
 		
