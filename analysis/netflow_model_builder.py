@@ -29,36 +29,6 @@ class NetflowModelBuilder(object):
 	def __init__(self, client):
 		self._esClient = client
 		self._queryBuilder = QueryBuilder()
-	
-	"""
-	For now, just some data exploration of the netflow* index data to check out the statistical properties and prior
-	distribution of the data by various aggregations (ip addresses, ports, protocols, etc).
-	"""
-
-	def PlotIpTrafficModel(self, g, labelVertices=True, labelEdges=True):
-		"""
-		@g: An igraph.Graph object
-		"""
-		visual_style = {}
-		visual_style["vertex_size"] = 15
-		visual_style["vertex_color"] = "green"
-		if labelVertices:
-			try:
-				visual_style["vertex_label"] = g.vs["name"]
-			except:
-				pass
-		if labelEdges:
-			try:
-				visual_style["edge_label"] = g.es["label"]
-			except:
-				pass
-		visual_style["vertex_label_size"] = 12
-		visual_style["layout"] = g.layout("kk")
-		visual_style["bbox"] = (800, 800)
-		visual_style["margin"] = 50
-		graphPlot = igraph.plot(g, **visual_style)
-
-		return graphPlot
 
 	def BuildIpTrafficModel(self, ipVersion="all", ipBlacklist=[], ipWhitelist=[]):
 		"""
@@ -78,9 +48,9 @@ class NetflowModelBuilder(object):
 		bucket2 = "dst_addr"
 		
 		options = dict()
-		if len(ipBlacklist) > 0:
+		if ipBlacklist is not None and len(ipBlacklist) > 0:
 			options["exclude"] = ipBlacklist
-		if len(ipWhitelist) > 0:
+		if ipWhitelist is not None and len(ipWhitelist) > 0:
 			options["include"] = ipWhitelist
 		
 		#aggregate ipv4 flows
@@ -93,8 +63,8 @@ class NetflowModelBuilder(object):
 																	bucket2, 
 																	bucket1DocValue, 
 																	bucket2DocValue, 
-																	level1BucketType="terms", 
-																	level2BucketType="terms", 
+																	level1BucketType="terms",
+																	level2BucketType="terms",
 																	level1DocValueType="field",
 																	level2DocValueType="field",
 																	level1Filter=options,
@@ -129,6 +99,9 @@ class NetflowModelBuilder(object):
 			#aggregate the ipv4/6 dictionaries together
 			aggDict = aggDict_Ipv4
 			aggDict[bucket1]["buckets"] += aggDict_Ipv6[bucket1]["buckets"]
+		
+		
+		
 		
 		return aggDict
 
@@ -191,7 +164,7 @@ class NetflowModelBuilder(object):
 			srcKey = outerBucket["key"]
 			for innerBucket in outerBucket[innerKey]["buckets"]:
 				dstKey = innerBucket["key"]
-				count = innerBucket["doc_count"]
+				count  = innerBucket["doc_count"]
 				es.append((srcKey,dstKey,count))
 
 		#build the vertex set
@@ -247,9 +220,9 @@ class NetflowModelBuilder(object):
 		bucket2 = "dst_addr"
 		bucket3 = "protocol"		
 		options = dict()
-		if len(ipBlacklist) > 0:
+		if ipBlacklist is not None and len(ipBlacklist) > 0:
 			options["exclude"] = ipBlacklist
-		if len(ipWhitelist) > 0:
+		if ipWhitelist is not None and len(ipWhitelist) > 0:
 			options["include"] = ipWhitelist
 		options = options if len(options) > 0 else None
 		
@@ -261,9 +234,9 @@ class NetflowModelBuilder(object):
 
 		#aggregate host-host ipv4 traffic by port/protocol
 		if ipVersion.lower() in ["ipv4","all"]:
-			qDict = self._queryBuilder.BuildTripleAggregateQuery(	bucket1, 
-																	bucket2, 
-																	bucket3, 
+			qDict = self._queryBuilder.BuildTripleAggregateQuery(	bucket1,
+																	bucket2,
+																	bucket3,
 																	"netflow.ipv4_src_addr",
 																	"netflow.ipv4_dst_addr",
 																	"netflow.l4_dst_port",
@@ -275,11 +248,12 @@ class NetflowModelBuilder(object):
 																	level3DocValueType="field",
 																	level1Filter=options, #filter ips by src-addr
 																	level2Filter=options, #filter ips by dest-addr
+																	level3Filter=None,
 																	size=0)
 			jsonBucket = self._esClient.aggregate(index, qDict)
 			aggDict_Ipv4 = jsonBucket["aggregations"]
 			#print(str(aggDict_Ipv4))
-			print(json.dumps(aggDict_Ipv4, indent=1))
+			#print(json.dumps(aggDict_Ipv4, indent=1))
 
 		#aggregate host-host ipv6 traffic by port/protocol
 		if ipVersion.lower() in ["ipv6", "all"]:
@@ -297,12 +271,13 @@ class NetflowModelBuilder(object):
 																	level3DocValueType="field",
 																	level1Filter=options, #filter ips by src-addr
 																	level2Filter=options, #filter ips by dest-addr
+																	level3Filter=None,
 																	size=0)
 			jsonBucket = self._esClient.aggregate(index, qDict)
 			aggDict_Ipv6 = jsonBucket["aggregations"]
 
-		#combine the two traffic aggregations: ipv4 and ipv6
 		if ipVersion.lower() == "all":
+			#combine the two traffic aggregations, ipv4 and ipv6
 			aggDict = aggDict_Ipv4
 			aggDict[bucket1]["buckets"] += aggDict_Ipv6[bucket1]["buckets"]
 		elif ipVersion.lower() == "ipv4":
@@ -321,8 +296,6 @@ class NetflowModelBuilder(object):
 				#convert these innermost buckets to a histogram from the elastic-aggs query json representation
 				hist = { pair["key"]:pair["doc_count"] for pair in innerBucket[bucket3]["buckets"] }
 				dest_dict[bucket3] = hist
-
-		#print("DDD: "+json.dumps(d, indent=2))
 				
 		return d
 		
@@ -337,7 +310,7 @@ class NetflowModelBuilder(object):
 			pass
 		return d
 
-	def BuildFlowSizeModel(self, ipVersion="all", protocolBucket="port", sizeAttrib="in_bytes"):
+	def BuildFlowSizeModel(self, ipVersion="all", protocolBucket="port", sizeAttrib="in_bytes", ipBlacklist=[], ipWhitelist=[]):
 		"""
 		Builds a triply-nested model of packet size (either in bytes or #packets in flow) determined
 		or even src-ip -> dst-ip -> protocol -> port, but I'm keeping it simple for now.
@@ -348,6 +321,9 @@ class NetflowModelBuilder(object):
 		@protocolBucket: The document attribute by which to aggregate packets, either by network layer protocol
 						(netflow.protocol), or by layer-4 port (netflow.l4_dst_port). Valid values are "port" or
 						"protocol".
+		@ipBlacklist: List of ips to exclude
+		@ipWhitelisT: List of ips to include
+		
 		Returns: A triply-nested dict of dicts, as d[src_ip][dst_ip][port][]
 		"""
 		index   = "netflow*"
@@ -361,6 +337,13 @@ class NetflowModelBuilder(object):
 		docValue1_Ipv6 = "netflow.ipv6_src_addr"
 		docValue2_Ipv6 = "netflow.ipv6_dst_addr"
 		docValue4 = sizeAttrib
+
+		ipOptions = dict()
+		if ipBlacklist is not None and len(ipBlacklist) > 0:
+			ipOptions["exclude"] = ipBlacklist
+		if ipWhitelist is not None and len(ipWhitelist) > 0:
+			ipOptions["include"] = ipWhitelist
+		ipOptions = ipOptions if len(ipOptions) > 0 else None
 		
 		#see header. @protocolBucket must be "port" or "protocol".
 		if protocolBucket == "port":
@@ -370,14 +353,14 @@ class NetflowModelBuilder(object):
 		
 		#aggregate ipv4 traffic
 		if ipVersion.lower() in ["ipv4","all"]:
-			bucketList = [(bucket1, docValue1_Ipv4), (bucket2, docValue2_Ipv4), (bucket3, docValue3), (bucket4, docValue4)]
+			bucketList = [(bucket1, docValue1_Ipv4, "terms", "field", ipOptions), (bucket2, docValue2_Ipv4, "terms", "field", ipOptions), (bucket3, docValue3), (bucket4, docValue4)]
 			qDict = self._queryBuilder.BuildDeepAggsQuery(bucketList, size=0)
 			jsonBucket = self._esClient.aggregate(index, qDict)
 			aggDict_Ipv4 = jsonBucket["aggregations"]
 
 		#aggregate ipv6 traffic
 		if ipVersion.lower() in ["ipv6","all"]:
-			bucketList = [(bucket1, docValue1_Ipv6), (bucket2, docValue2_Ipv6), (bucket3, docValue3), (bucket4, docValue4)]
+			bucketList = [(bucket1, docValue1_Ipv6, "terms", "field", ipOptions), (bucket2, docValue2_Ipv6, "terms", "field", ipOptions), (bucket3, docValue3), (bucket4, docValue4)]
 			qDict = self._queryBuilder.BuildDeepAggsQuery(bucketList, size=0)
 			jsonBucket = self._esClient.aggregate(index, qDict)
 			aggDict_Ipv6 = jsonBucket["aggregations"]
@@ -393,33 +376,39 @@ class NetflowModelBuilder(object):
 			
 		return aggDict
 
-	def BuildNetFlowModel(self):
+	def BuildNetFlowModel(self, ipVersion="all", ipBlacklist=None, ipWhitelist=None):
 		"""
 		Builds a very specific kind of flow model, represented as a graph with edges and
 		vertices containing further information.
+		
+		@ipVersion: str 'ipv4' 'ipv6' or 'all', indicating which type of traffic to include in the model
+		@ipBlacklist: A list of ips to exclude from the model; these may contain wildcards, per the
+					'include'/'exclude' filter param style of elastic 5.6 aggs queries.
+		@ipWhitelist: A list of ips to exclusively include.
+		
+		Of course, @ipBlacklist/@ipWhitelist should be treated as mutually exclusive.
 		"""
 		
 		#query the netflow indices for all traffic between hosts
-		ipBlacklist = ["192.168.0.14"]
-		ipModel = self.BuildIpTrafficModel(ipVersion="all", ipBlacklist=ipBlacklist)
+		ipModel = self.BuildIpTrafficModel(ipVersion=ipVersion, ipBlacklist=ipBlacklist, ipWhitelist=ipWhitelist)
 		g = self.BuildIpTrafficGraphicalModel(ipModel)
 		flowModel = NetFlowModel(g)
-		self.PlotIpTrafficModel(g)
+		flowModel.PlotIpTrafficModel()
 		
 		#aggregate host-to-host traffic by ip protocol (icmp traffic, though infrequent, is not always safe: ping+traceroute are used for recon, and other methods use icmp for key transmission
-		protocolModel = self.BuildProtocolModel(ipVersion="all", protocolBucket="protocol", ipBlacklist=ipBlacklist)
-		print(str(protocolModel))
+		protocolModel = self.BuildProtocolModel(ipVersion=ipVersion, protocolBucket="protocol", ipBlacklist=ipBlacklist, ipWhitelist=ipWhitelist)
+		#print(str(protocolModel))
 		if not flowModel.MergeEdgeModel(protocolModel, "protocol"):
 			print("ERROR could not merge protocol model into flow model")
-			print(str(protocolModel))
+			#print(str(protocolModel))
 		"""
 		#aggregate host-to-host traffic by layer-4 dest port. Some, but not all, dest-port usage is indicative of the application layer protocol (ftp, http, etc).
-		portModel = self.BuildProtocolModel(ipVersion="all", protocolBucket="port")
+		portModel = self.BuildProtocolModel(ipVersion=ipVersion, protocolBucket="port", ipBlacklist=ipBlacklist, ipWhitelist=ipWhitelist)
 		if not flowModel.MergeEdgeModel(portModel, "port"):
 			print("ERROR could not merge port model into flow model")
 		
 		#aggregate host-to-host port traffic by packet size
-		pktSizeModel = self.BuildFlowSizeModel(ipVersion="all", protocolBucket="port", sizeAttrib="in_bytes")
+		pktSizeModel = self.BuildFlowSizeModel(ipVersion=ipVersion, protocolBucket="port", sizeAttrib="in_bytes", ipBlacklist=ipBlacklist, ipWhitelist=ipWhitelist)
 		if not flowModel.MergeEdgeModel(pktSizeModel, "pkt_size"):
 			print("ERROR could not merge port model into flow model")
 		
@@ -447,14 +436,32 @@ class NetflowModelBuilder(object):
 			
 		print("Target in addrs: {}".format("31.13.76" in str(protocolModel)))
 		
-		
-		return 1
+		return flowModel
 		
 def main():
 	servAddr = "http://192.168.0.91:80/elasticsearch"
 	client = ElasticClient(servAddr)
-	builder = NetflowModelBuilder(client)
-	model = builder.BuildNetFlowModel()
+	builder	= NetflowModelBuilder(client)
+	ipVersion = "ipv4"
+	
+	"""
+	Note that blacklist/whitelist are passed along to "include"/"exclude" aggs clauses, which process
+	single strings params as regexes, and arrays (lists) as exact matches. So passing a list of ips will
+	exact match on those ips; passing a single string will be treated as a regex ("regexp queries" in elastic speak).
+	Passing a single-item list will be converted to a regex. Also, avoid ambiguous include/exclude logic, since usually
+	such combinations of the two can be achieved with only one of include/exclude and a decent regex. Passing both
+	should be avoided because of its ambiguous meaning, but technically because it isn't clear in which order each
+	should be applied (excluding a set of regexes, then including itm etc). Try to stick with one. Elastic also
+	returns errors when passing a single item inclue list and an exclude regex, so elastic's implementation is sketchy.
+	"""
+	#blacklist = ["192.168.0.14", "192.168.19.1", "192.168.0.13", "192.168.0.12", "192.168.56.1", "192.168.99.1"]
+	#whitelist = None
+	#blacklist = ["192.168.0.14","192.168.10.2"]
+	#blacklist = "192.168.0.14"
+	blacklist = None
+	whitelist = "192\.168\.(2|0)\..*"
+	#whitelist = None
+	model = builder.BuildNetFlowModel(ipVersion=ipVersion, ipBlacklist=blacklist, ipWhitelist=whitelist)
 		
 if __name__ == "__main__":
 	main()

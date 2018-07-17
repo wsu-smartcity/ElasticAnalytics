@@ -16,6 +16,7 @@ off the existing python-elastic clients out there.
 
 import json
 
+
 class QueryBuilder(object):
 	def __init__(self):
 		pass
@@ -127,11 +128,11 @@ class QueryBuilder(object):
 			docValueType = "field"
 			opts = None
 			#override bucketType and docValueType values if in @tup
-			if len(tup) >= 3:
+			if len(tup) >= 3 and tup[2] is not None:
 				bucketType = tup[2]
-			if len(tup) >= 4:
+			if len(tup) >= 4 and tup[3] is not None:
 				docValueType = tup[3]
-			if len(tup) >= 5:
+			if len(tup) >= 5 and tup[4] is not None:
 				opts = tup[4]
 			#build this next-inner bucket and insert into aggDict
 			bucket = self._buildAggBucketDict(bucketName, bucketType, docValueType, docValue, {}, opts)

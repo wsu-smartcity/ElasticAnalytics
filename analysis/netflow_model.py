@@ -27,7 +27,7 @@ and the numerical mistakes can completely upset proper probability distributions
 
 
 """
-
+import traceback
 import igraph
 
 class NetFlowModel(object):
@@ -42,7 +42,7 @@ class NetFlowModel(object):
 		self._edgeModels = [] # a list of the edge-based models (hisograms, weights, etc) added to the model
 		
 	def _getGraphVertexNames(self):
-		return [v["name"] for v in self._graph.vs]
+		return sorted([v["name"] for v in self._graph.vs])
 	
 	def Print(self):
 		print("Vertices:")
@@ -65,24 +65,30 @@ class NetFlowModel(object):
 			3) the edge model name doesn't already exist in the edges
 		"""
 		isValid = True
-		modelKeys = set(src for src in edgeModel.keys())
-		modelKeys = modelKeys.union(set(dst for src in edgeModel.keys() for dst in edgeModel[src].keys()))
+		#build the set of keys in @edgeModel
+		modelKeys = set()
+		for src in edgeModel.keys():
+			modelKeys.add(src)
+			for dst in edgeModel.keys():
+				modelKeys.add(dst)
+		#get the keys of the current graph
 		vertexNames = self._getGraphVertexNames()
 		
-		missingNames = [name for name in modelKeys if name not in vertexNames]
+		missingNames = sorted([name for name in modelKeys if name not in vertexNames])
 		if any(missingNames):
-			print("ERROR edgeModel key {} not in network graph vertices: {}".format(missingNames, vertexNames))
+			print("ERROR edgeModel keys {}\n ...not in network graph vertices: {}".format(missingNames, vertexNames))
 			isValid = False
 				
 		for src in edgeModel.keys():
 			for dst in edgeModel[src].keys():
-				try: 
+				try:
 					edge = self._getEdge(src, dst)
 				except:
 					print("ERROR no edge ({},{}) in graph".format(src,dst))
+					traceback.print_exc()
 					isValid = False
 					
-		if any(modelName in edge.attribute_names() for edge in self._graph.es):
+		if modelName in self._graph.es.attribute_names():
 			print("ERROR edge model name {} already exists".format(modelName))
 			isValid = False
 
@@ -123,8 +129,46 @@ class NetFlowModel(object):
 					self._edgeModels.append(modelName)
 					
 		return succeeded
+
+	def PlotIpTrafficModel(self, labelVertices=True, labelEdges=True):
+		"""
+		Plots and shows the ip-graph of hosts in @g. The graph is only plotted if it has less than some modest
+		and plottable number of vertices, as many graphs are too huge to fit in memory. If needed, a solution
+		is to generate a view of the graph, such as only plotting vertices under some criterion, then plotting
+		this view of the graph.
 		
-	def _getEdge(self, src, dst):
+		Returns: The plot, or None if a failure occurred.
+		"""
+		graphPlot = None
+		
+		if len(self._graph.vs) < 200:
+			try:
+				visual_style = {}
+				visual_style["vertex_size"] = 15
+				visual_style["vertex_color"] = "green"
+				if labelVertices:
+					try:
+						visual_style["vertex_label"] = self._graph.vs["name"]
+					except:
+						pass
+				if labelEdges:
+					try:
+						visual_style["edge_label"] = self._graph.es["label"]
+					except:
+						pass
+				visual_style["vertex_label_size"] = 12
+				visual_style["layout"] = self._graph.layout("kk")
+				visual_style["bbox"] = (1100, 1100)
+				visual_style["margin"] = 50
+				graphPlot = igraph.plot(self._graph, **visual_style)
+			except:
+				traceback.print_exc()
+		else:
+			print("Graph too large to plot ({} > 200 vertices), skipping plotting...".format(len(self._graph.vs)))
+				
+		return graphPlot
+		
+	def _getEdge(self, srcIp, dstIp):
 		"""
 		This function will throw if either or src/dst are not in graph vertices, or likewise no edge between them.
 		Caller should catch any exceptions.
@@ -138,17 +182,30 @@ class NetFlowModel(object):
 		
 		return edge
 		
-	def _addEdgeAttribute(self, srcIp, dstIp, key, value):
+	def _addEdgeAttribute(self, srcIp, dstIp, attrib, value):
+		"""
+		 Three cases are handled below:
+			1) @attrib not in edge.attribute_names(), so just add it: 'edge[attrib] = value'
+			2) @attrib is in edge.attribute_names() and edge[attrib] is None, so handle just like in (1): 'edge[attrib] = value'
+				This case occurs because in igraph adding an attribute to one edge broadcasts that name
+				to all edges and initializes their value to None.
+			3) @attrib is in edge.attribute_names() and is not None. This is the only error case, meaning the
+				attribute was already set, and we are attempting to overwrite it.
+		"""
 		succeeded = False
+		
 		try:
-			edge = self._getEdge()
-			if key not in edge.attribute_names():
-				edge[key] = model
+			edge = self._getEdge(srcIp, dstIp)
+			if attrib not in edge.attribute_names() or edge[attrib] is None:
+				edge[attrib] = value
 				succeeded = True
 			else:
-				print("ERROR attempted to add key >{}< to edge ({}, {}), but already exists in edge attributes: {}".format(key, src["name"], dst["name"], edge.attribute_names()))
+				#@attrib is in edge attributes, and is not None
+				print("ERROR attempted to add attrib >{}< to edge ({}, {}), but attribute already initialized: {}".format(attrib, srcIp, dstIp, edge[attrib]))
 		except:
 			print("ERROR srcIp or dstIp vertices or edge not found")
+			traceback.print_exc()
+		
 		return succeeded
 		
 	def GetConditionalDistribution(self):
