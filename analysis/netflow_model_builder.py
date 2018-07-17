@@ -30,7 +30,22 @@ class NetflowModelBuilder(object):
 		self._esClient = client
 		self._queryBuilder = QueryBuilder()
 
-	def BuildIpTrafficModel(self, ipVersion="all", ipBlacklist=[], ipWhitelist=[]):
+	def _getAggResponseStats(self, aggResponse):
+		"""		
+		NOTE: Forget recursion for now, I'm assuming the outer bucket error counts reflects the summation of all inner ones,
+		or will at least be greater than zero when any inner ones are greater than zero.
+		
+		Ideally, error counts should be all zeros, hence aggregating them and losing the information about their origin
+		is unimportant.
+		"""
+		
+		failureCount = aggResponse["_shards"]["failed"]
+		docCountError = aggResponse["aggregations"][aggResponse["aggregations"].keys()[0]]["doc_count_error_upper_bound"]
+		otherDocCount = aggResponse["aggregations"][aggResponse["aggregations"].keys()[0]]["sum_other_doc_count"]
+
+		return failureCount, docCountError, otherDocCount
+
+	def BuildIpTrafficModel(self, indexPattern="netflow*", ipVersion="all", ipBlacklist=[], ipWhitelist=[]):
 		"""
 		Using only netflow volume data, analyze the traffic patterns of the network, as a directed graph.
 		
@@ -43,7 +58,7 @@ class NetflowModelBuilder(object):
 		representing the existence of traffic between them. The edges are decorated with @weight, representing
 		the number of netflows recorded between the hosts.
 		"""
-		index = "netflow*"
+		index = indexPattern
 		bucket1 = "src_addr"
 		bucket2 = "dst_addr"
 		
@@ -70,8 +85,11 @@ class NetflowModelBuilder(object):
 																	level1Filter=options,
 																	level2Filter=options,
 																	size=0)
-			jsonBucket = self._esClient.aggregate(index, qDict)
+			jsonBucket = self._esClient.aggregate(indexPattern, qDict)
+			print(json.dumps(jsonBucket))
 			aggDict_Ipv4 = jsonBucket["aggregations"]
+			failCount_Ipv4, docErrors_Ipv4, otherCount_Ipv4 = self._getAggResponseStats(jsonBucket)
+		
 		#aggregate ipv6 flows
 		if ipVersion.lower() in ["ipv6", "all"]:
 			bucket1DocValue = "netflow.ipv6_src_addr"
@@ -88,21 +106,30 @@ class NetflowModelBuilder(object):
 																	level1Filter=options,
 																	level2Filter=options,
 																	size=0)
-			jsonBucket = self._esClient.aggregate(index, qDict)
+			jsonBucket = self._esClient.aggregate(indexPattern, qDict)
 			aggDict_Ipv6 = jsonBucket["aggregations"]
-
-		if ipVersion.lower() == "ipv4":
+			failCount_Ipv6, docErrors_Ipv6, otherCount_Ipv6 = self._getAggResponseStats(jsonBucket)
+			
+		#aggregate results per selected ip traffic type
+		if ipVersion.lower() == "ipv4":		
 			aggDict = aggDict_Ipv4
+			failureCount, docErrorCount, otherCount = failCount_Ipv4, docErrors_Ipv4, otherCount_Ipv4
 		elif ipVersion.lower() == "ipv6":
 			aggDict = aggDict_Ipv6
+			failureCount, docErrorCount, otherCount = failCount_Ipv6, docErrors_Ipv6, otherCount_Ipv6
 		else:
 			#aggregate the ipv4/6 dictionaries together
 			aggDict = aggDict_Ipv4
 			aggDict[bucket1]["buckets"] += aggDict_Ipv6[bucket1]["buckets"]
-		
-		
-		
-		
+			#carry over the outer error statistics as well
+			failureCount, docErrorCount, otherCount = failCount_Ipv4, docErrors_Ipv4, otherCount_Ipv4
+			failureCount += failCount_Ipv6
+			docErrorCount += docErrors_Ipv6
+			otherCount += otherCount_Ipv6
+
+		#at least report error counts to the console
+		print("IpTrafficModel Aggs errors: failures={}  doc-count-error-bound={}  sum_other_doc_count={}".format(failureCount, docErrorCount, otherCount))
+
 		return aggDict
 
 	def PlotDirectedEdgeHistogram(self, g, edgeAttribute="weight", useLogP1Space=True):
@@ -201,7 +228,7 @@ class NetflowModelBuilder(object):
 		return g
 		"""
 
-	def BuildProtocolModel(self, ipVersion="all", protocolBucket="port", ipBlacklist=[], ipWhitelist=[]):
+	def BuildProtocolModel(self, indexPattern="netflow*", ipVersion="all", protocolBucket="port", ipBlacklist=[], ipWhitelist=[]):
 		"""
 		Builds a triply-nested model of traffic via the following: src_ip -> dst_ip -> port/protocol.
 		Or rather simply, gets the distribution of traffic per each src-dst ip edge in the network per
@@ -215,7 +242,6 @@ class NetflowModelBuilder(object):
 		@ipVersion: Indicates which layer-3 traffic to include: ipv4, ipv6, or both. Valid values are "ipv4", "ipv6", or "all"; "all" is preferred, I just
 					wanted to make sure the code was factored to support this selector.
 		"""
-		index = "netflow*"
 		bucket1 = "src_addr"
 		bucket2 = "dst_addr"
 		bucket3 = "protocol"		
@@ -250,8 +276,9 @@ class NetflowModelBuilder(object):
 																	level2Filter=options, #filter ips by dest-addr
 																	level3Filter=None,
 																	size=0)
-			jsonBucket = self._esClient.aggregate(index, qDict)
+			jsonBucket = self._esClient.aggregate(indexPattern, qDict)
 			aggDict_Ipv4 = jsonBucket["aggregations"]
+			failCount_Ipv4, docErrors_Ipv4, otherCount_Ipv4 = self._getAggResponseStats(jsonBucket)
 			#print(str(aggDict_Ipv4))
 			#print(json.dumps(aggDict_Ipv4, indent=1))
 
@@ -273,18 +300,29 @@ class NetflowModelBuilder(object):
 																	level2Filter=options, #filter ips by dest-addr
 																	level3Filter=None,
 																	size=0)
-			jsonBucket = self._esClient.aggregate(index, qDict)
+			jsonBucket = self._esClient.aggregate(indexPattern, qDict)
 			aggDict_Ipv6 = jsonBucket["aggregations"]
+			failCount_Ipv6, docErrors_Ipv6, otherCount_Ipv6 = self._getAggResponseStats(jsonBucket)
 
-		if ipVersion.lower() == "all":
-			#combine the two traffic aggregations, ipv4 and ipv6
+		#aggregate results per selected ip traffic type
+		if ipVersion.lower() == "ipv4":		
 			aggDict = aggDict_Ipv4
-			aggDict[bucket1]["buckets"] += aggDict_Ipv6[bucket1]["buckets"]
-		elif ipVersion.lower() == "ipv4":
-			aggDict = aggDict_Ipv4
+			failureCount, docErrorCount, otherCount = failCount_Ipv4, docErrors_Ipv4, otherCount_Ipv4
 		elif ipVersion.lower() == "ipv6":
 			aggDict = aggDict_Ipv6
+			failureCount, docErrorCount, otherCount = failCount_Ipv6, docErrors_Ipv6, otherCount_Ipv6
+		else:
+			#aggregate the ipv4/6 dictionaries together
+			aggDict = aggDict_Ipv4
+			aggDict[bucket1]["buckets"] += aggDict_Ipv6[bucket1]["buckets"]
+			#carry over the outer error statistics as well
+			failureCount, docErrorCount, otherCount = failCount_Ipv4, docErrors_Ipv4, otherCount_Ipv4
+			failureCount += failCount_Ipv6
+			docErrorCount += docErrors_Ipv6
+			otherCount += otherCount_Ipv6
 
+		print("BuildProtocolModel Aggs errors: failures={}  doc-count-error-bound={}  sum_other_doc_count={}".format(failureCount, docErrorCount, otherCount))
+			
 		#convert the response to something easier to work with, and keys as [src][dst] -> protocol-histogram
 		d = dict()
 		for outerBucket in aggDict[bucket1]["buckets"]:
@@ -298,19 +336,8 @@ class NetflowModelBuilder(object):
 				dest_dict[bucket3] = hist
 				
 		return d
-		
-	def _esAggDictToPyDict(self, aggDict, bucketKeyList):
-		"""
-		The elastic-search aggs query response is a dictionary with a bunch of metadata we don't currently need.
-		This converts it into a regular python dictionary, removing the stuff we don't need.
-		"""
-		d = dict()
-		
-		for key in bucketKeyList:
-			pass
-		return d
 
-	def BuildFlowSizeModel(self, ipVersion="all", protocolBucket="port", sizeAttrib="in_bytes", ipBlacklist=[], ipWhitelist=[]):
+	def BuildFlowSizeModel(self, indexPattern="netflow*", ipVersion="all", protocolBucket="port", sizeAttrib="in_bytes", ipBlacklist=[], ipWhitelist=[]):
 		"""
 		Builds a triply-nested model of packet size (either in bytes or #packets in flow) determined
 		or even src-ip -> dst-ip -> protocol -> port, but I'm keeping it simple for now.
@@ -355,28 +382,40 @@ class NetflowModelBuilder(object):
 		if ipVersion.lower() in ["ipv4","all"]:
 			bucketList = [(bucket1, docValue1_Ipv4, "terms", "field", ipOptions), (bucket2, docValue2_Ipv4, "terms", "field", ipOptions), (bucket3, docValue3), (bucket4, docValue4)]
 			qDict = self._queryBuilder.BuildDeepAggsQuery(bucketList, size=0)
-			jsonBucket = self._esClient.aggregate(index, qDict)
+			jsonBucket = self._esClient.aggregate(indexPattern, qDict)
 			aggDict_Ipv4 = jsonBucket["aggregations"]
+			failCount_Ipv4, docErrors_Ipv4, otherCount_Ipv4 = self._getAggResponseStats(jsonBucket)
 
 		#aggregate ipv6 traffic
 		if ipVersion.lower() in ["ipv6","all"]:
 			bucketList = [(bucket1, docValue1_Ipv6, "terms", "field", ipOptions), (bucket2, docValue2_Ipv6, "terms", "field", ipOptions), (bucket3, docValue3), (bucket4, docValue4)]
 			qDict = self._queryBuilder.BuildDeepAggsQuery(bucketList, size=0)
-			jsonBucket = self._esClient.aggregate(index, qDict)
+			jsonBucket = self._esClient.aggregate(indexPattern, qDict)
 			aggDict_Ipv6 = jsonBucket["aggregations"]
+			failCount_Ipv6, docErrors_Ipv6, otherCount_Ipv6 = self._getAggResponseStats(jsonBucket)
 
-		#combine the two traffic aggregations: ipv4 and ipv6
-		if ipVersion.lower() == "all":
+		#aggregate results per selected ip traffic type
+		if ipVersion.lower() == "ipv4":		
 			aggDict = aggDict_Ipv4
-			aggDict[bucket1]["buckets"] += aggDict_Ipv6[bucket1]["buckets"]
-		elif ipVersion.lower() == "ipv4":
-			aggDict = aggDict_Ipv4
+			failureCount, docErrorCount, otherCount = failCount_Ipv4, docErrors_Ipv4, otherCount_Ipv4
 		elif ipVersion.lower() == "ipv6":
 			aggDict = aggDict_Ipv6
+			failureCount, docErrorCount, otherCount = failCount_Ipv6, docErrors_Ipv6, otherCount_Ipv6
+		else:
+			#aggregate the ipv4/6 dictionaries together
+			aggDict = aggDict_Ipv4
+			aggDict[bucket1]["buckets"] += aggDict_Ipv6[bucket1]["buckets"]
+			#carry over the outer error statistics as well
+			failureCount, docErrorCount, otherCount = failCount_Ipv4, docErrors_Ipv4, otherCount_Ipv4
+			failureCount += failCount_Ipv6
+			docErrorCount += docErrors_Ipv6
+			otherCount += otherCount_Ipv6
+
+		print("BuildFlowSizeModel Aggs errors: failures={}  doc-count-error-bound={}  sum_other_doc_count={}".format(failureCount, docErrorCount, otherCount))
 			
 		return aggDict
 
-	def BuildNetFlowModel(self, ipVersion="all", ipBlacklist=None, ipWhitelist=None):
+	def BuildNetFlowModel(self, indexPattern="netflow*", ipVersion="all", ipBlacklist=None, ipWhitelist=None):
 		"""
 		Builds a very specific kind of flow model, represented as a graph with edges and
 		vertices containing further information.
@@ -390,13 +429,13 @@ class NetflowModelBuilder(object):
 		"""
 		
 		#query the netflow indices for all traffic between hosts
-		ipModel = self.BuildIpTrafficModel(ipVersion=ipVersion, ipBlacklist=ipBlacklist, ipWhitelist=ipWhitelist)
+		ipModel = self.BuildIpTrafficModel(indexPattern, ipVersion=ipVersion, ipBlacklist=ipBlacklist, ipWhitelist=ipWhitelist)
 		g = self.BuildIpTrafficGraphicalModel(ipModel)
 		flowModel = NetFlowModel(g)
 		flowModel.PlotIpTrafficModel()
 		
 		#aggregate host-to-host traffic by ip protocol (icmp traffic, though infrequent, is not always safe: ping+traceroute are used for recon, and other methods use icmp for key transmission
-		protocolModel = self.BuildProtocolModel(ipVersion=ipVersion, protocolBucket="protocol", ipBlacklist=ipBlacklist, ipWhitelist=ipWhitelist)
+		protocolModel = self.BuildProtocolModel(indexPattern, ipVersion=ipVersion, protocolBucket="protocol", ipBlacklist=ipBlacklist, ipWhitelist=ipWhitelist)
 		#print(str(protocolModel))
 		if not flowModel.MergeEdgeModel(protocolModel, "protocol"):
 			print("ERROR could not merge protocol model into flow model")
@@ -437,7 +476,7 @@ class NetflowModelBuilder(object):
 		print("Target in addrs: {}".format("31.13.76" in str(protocolModel)))
 		
 		return flowModel
-		
+
 def main():
 	servAddr = "http://192.168.0.91:80/elasticsearch"
 	client = ElasticClient(servAddr)
@@ -453,16 +492,35 @@ def main():
 	should be avoided because of its ambiguous meaning, but technically because it isn't clear in which order each
 	should be applied (excluding a set of regexes, then including itm etc). Try to stick with one. Elastic also
 	returns errors when passing a single item inclue list and an exclude regex, so elastic's implementation is sketchy.
+	
+	Regexes work for ip fields in include/exclude clauses, but its ill-advised. Some of our indices complain about the datatype.
+	Elasticsearch docs specify using only arrays of values in the include/exclude clause of aggs queries, not regexes,
+	so stick with that. The ip fields do support CIDR prefix lengths, though, for range based queries.
 	"""
 	#blacklist = ["192.168.0.14", "192.168.19.1", "192.168.0.13", "192.168.0.12", "192.168.56.1", "192.168.99.1"]
 	#whitelist = None
 	#blacklist = ["192.168.0.14","192.168.10.2"]
 	#blacklist = "192.168.0.14"
 	blacklist = None
-	whitelist = "192\.168\.(2|0)\..*"
+	whitelist = ["192.168.2.0/24"]
+	"""
+	whitelist = [	"192.168.2.10",
+					"192.168.2.101",
+					"192.168.2.102",
+					"192.168.2.103",
+					"192.168.2.104",
+					"192.168.2.105",
+					"192.168.2.106",
+					"192.168.2.107",
+					"192.168.2.108"]
+	"""
+	#whitelist = "192\.168\.(2|0|1)\..*"
+	#whitelist = "192\.168\.2\..*"
 	#whitelist = None
-	model = builder.BuildNetFlowModel(ipVersion=ipVersion, ipBlacklist=blacklist, ipWhitelist=whitelist)
-		
+	indexPattern = "netflow*"
+	indexPattern = "netflow-v9-2017*"
+	model = builder.BuildNetFlowModel(indexPattern, ipVersion=ipVersion, ipBlacklist=blacklist, ipWhitelist=whitelist)
+
 if __name__ == "__main__":
 	main()
 		
