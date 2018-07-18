@@ -230,7 +230,7 @@ class NetflowModelBuilder(object):
 
 	def BuildProtocolModel(self, indexPattern="netflow*", ipVersion="all", protocolBucket="port", ipBlacklist=[], ipWhitelist=[]):
 		"""
-		Builds a triply-nested model of traffic via the following: src_ip -> dst_ip -> port/protocol.
+		Builds a dou bly-nested model of traffic via the following: src_ip -> dst_ip -> port/protocol.
 		Or rather simply, gets the distribution of traffic per each src-dst ip edge in the network per
 		either the port number of the netflow of the protocol number. Port number is indicative of 
 		transport layer activity/protocol (http, ftp, etc), whereas the protocol number is at the ip/network
@@ -321,7 +321,7 @@ class NetflowModelBuilder(object):
 			docErrorCount += docErrors_Ipv6
 			otherCount += otherCount_Ipv6
 
-		print("BuildProtocolModel Aggs errors: failures={}  doc-count-error-bound={}  sum_other_doc_count={}".format(failureCount, docErrorCount, otherCount))
+		print("BuildProtocolModel({}) Aggs errors: failures={}  doc-count-error-bound={}  sum_other_doc_count={}".format(protocolBucket, failureCount, docErrorCount, otherCount))
 			
 		#convert the response to something easier to work with, and keys as [src][dst] -> protocol-histogram
 		d = dict()
@@ -337,11 +337,17 @@ class NetflowModelBuilder(object):
 				
 		return d
 
-	def BuildFlowSizeModel(self, indexPattern="netflow*", ipVersion="all", protocolBucket="port", sizeAttrib="in_bytes", ipBlacklist=[], ipWhitelist=[]):
+	def BuildFlowSizeModel(self, indexPattern="netflow*", ipVersion="all", protocolBucket="port", sizeAttrib="netflow.in_bytes", ipBlacklist=[], ipWhitelist=[]):
 		"""
 		Builds a triply-nested model of packet size (either in bytes or #packets in flow) determined
 		or even src-ip -> dst-ip -> protocol -> port, but I'm keeping it simple for now.
 		by src-ip -> dst-ip -> port -> packet_size. This could estimate by src-ip -> dst-ip -> protocol instead,
+		
+		NOTE: The returned histograms are over flow-sizes with their associated counts, which are really discretized versions
+		of continuous distributions, and not multiclass distributions. Hence if a particular src-dst-port entry has (2345:4)
+		(4 flows of size 2345), this should not be interpreted as 4 occurrences of "class" 2345 like in other distributions.
+		So don't forget to multiply 4*2345 when cnoverting the histogram to its means/variances; don't treat the entries like
+		events, e.g. '4 events of class 2345'.
 		
 		@sizeAttrib: The document size attribute/field in the netflow. Valid values are "in_bytes" (model flows
 					by bytes) or "in_pkts" (model number of packets in flows).
@@ -381,15 +387,16 @@ class NetflowModelBuilder(object):
 		#aggregate ipv4 traffic
 		if ipVersion.lower() in ["ipv4","all"]:
 			bucketList = [(bucket1, docValue1_Ipv4, "terms", "field", ipOptions), (bucket2, docValue2_Ipv4, "terms", "field", ipOptions), (bucket3, docValue3), (bucket4, docValue4)]
-			qDict = self._queryBuilder.BuildDeepAggsQuery(bucketList, size=0)
+			qDict = self._queryBuilder.BuildNestedAggsQuery(bucketList, size=0)
 			jsonBucket = self._esClient.aggregate(indexPattern, qDict)
 			aggDict_Ipv4 = jsonBucket["aggregations"]
+			print(json.dumps(jsonBucket, indent=2))
 			failCount_Ipv4, docErrors_Ipv4, otherCount_Ipv4 = self._getAggResponseStats(jsonBucket)
 
 		#aggregate ipv6 traffic
 		if ipVersion.lower() in ["ipv6","all"]:
 			bucketList = [(bucket1, docValue1_Ipv6, "terms", "field", ipOptions), (bucket2, docValue2_Ipv6, "terms", "field", ipOptions), (bucket3, docValue3), (bucket4, docValue4)]
-			qDict = self._queryBuilder.BuildDeepAggsQuery(bucketList, size=0)
+			qDict = self._queryBuilder.BuildNestedAggsQuery(bucketList, size=0)
 			jsonBucket = self._esClient.aggregate(indexPattern, qDict)
 			aggDict_Ipv6 = jsonBucket["aggregations"]
 			failCount_Ipv6, docErrors_Ipv6, otherCount_Ipv6 = self._getAggResponseStats(jsonBucket)
@@ -413,6 +420,24 @@ class NetflowModelBuilder(object):
 
 		print("BuildFlowSizeModel Aggs errors: failures={}  doc-count-error-bound={}  sum_other_doc_count={}".format(failureCount, docErrorCount, otherCount))
 			
+		#print
+			
+		#convert the response to something easier to work with, and keys as [src][dst][protocol/port] -> size-histogram
+		d = dict()
+		for srcBucket in aggDict[bucket1]["buckets"]:
+			src_addr = srcBucket["key"]
+			src_dict = d.setdefault(src_addr, dict())
+			for destBucket in srcBucket[bucket2]["buckets"]:
+				dest_addr = destBucket["key"]
+				dest_dict = src_dict.setdefault(dest_addr, dict())
+				for protoBucket in destBucket[bucket3]["buckets"]:
+					protocol = protoBucket["key"] #either a protocol or port #
+					protocol_dict = dest_dict.setdefault(protocol, dict())
+					print("{} BUCKET: {}".format(bucket4, protoBucket))
+					#convert these innermost buckets to a histogram from the elastic-aggs query json representation
+					hist = { pair["key"]:pair["doc_count"] for pair in protocolBucket[bucket4]["buckets"] }
+					protocol_dict[bucket4] = hist
+
 		return aggDict
 
 	def BuildNetFlowModel(self, indexPattern="netflow*", ipVersion="all", ipBlacklist=None, ipWhitelist=None):
@@ -439,23 +464,22 @@ class NetflowModelBuilder(object):
 		#print(str(protocolModel))
 		if not flowModel.MergeEdgeModel(protocolModel, "protocol"):
 			print("ERROR could not merge protocol model into flow model")
-			#print(str(protocolModel))
-		"""
+
 		#aggregate host-to-host traffic by layer-4 dest port. Some, but not all, dest-port usage is indicative of the application layer protocol (ftp, http, etc).
-		portModel = self.BuildProtocolModel(ipVersion=ipVersion, protocolBucket="port", ipBlacklist=ipBlacklist, ipWhitelist=ipWhitelist)
+		portModel = self.BuildProtocolModel(indexPattern, ipVersion=ipVersion, protocolBucket="port", ipBlacklist=ipBlacklist, ipWhitelist=ipWhitelist)
 		if not flowModel.MergeEdgeModel(portModel, "port"):
 			print("ERROR could not merge port model into flow model")
 		
 		#aggregate host-to-host port traffic by packet size
-		pktSizeModel = self.BuildFlowSizeModel(ipVersion=ipVersion, protocolBucket="port", sizeAttrib="in_bytes", ipBlacklist=ipBlacklist, ipWhitelist=ipWhitelist)
-		if not flowModel.MergeEdgeModel(pktSizeModel, "pkt_size"):
+		pktSizeModel = self.BuildFlowSizeModel(indexPattern, ipVersion=ipVersion, protocolBucket="port", sizeAttrib="netflow.in_bytes", ipBlacklist=ipBlacklist, ipWhitelist=ipWhitelist)
+		if not flowModel.MergeEdgeModel(pktSizeModel, "in_bytes"):
 			print("ERROR could not merge port model into flow model")
-		
+
+		"""
 		#FUTURE
 		#aggregate host-to-host port traffic by time-stamp
 		#pktSizeModel = self.BuildFlowTimestampModel()
-		"""
-		
+
 		print("Num ip addrs: {}".format(len(g.vs)))
 		print("Target in addrs: {}".format("207.241.22" in str(protocolModel)))
 		addrs = set()
@@ -463,17 +487,18 @@ class NetflowModelBuilder(object):
 			addrs.add(src)
 			for dst in protocolModel[src].keys():
 				addrs.add(src)
-		"""
+				
 		with open("addrs.txt","w+") as ofile:
 			for addr in addrs:
 				ofile.write(addr+"\n")
-		"""	
+
 		for addr in sorted(list(addrs)):
 			if "31.13." in addr:
 				print("Hit: {}".format(addr))
 			print(addr)
 			
 		print("Target in addrs: {}".format("31.13.76" in str(protocolModel)))
+		"""
 		
 		return flowModel
 
@@ -503,7 +528,7 @@ def main():
 	#blacklist = "192.168.0.14"
 	blacklist = None
 	whitelist = ["192.168.2.0/24"]
-	"""
+	
 	whitelist = [	"192.168.2.10",
 					"192.168.2.101",
 					"192.168.2.102",
@@ -513,12 +538,14 @@ def main():
 					"192.168.2.106",
 					"192.168.2.107",
 					"192.168.2.108"]
-	"""
+	
 	#whitelist = "192\.168\.(2|0|1)\..*"
 	#whitelist = "192\.168\.2\..*"
 	#whitelist = None
 	indexPattern = "netflow*"
 	indexPattern = "netflow-v9-2017*"
+	#use '-' to exclude specific indices or patterns
+	indexPattern = "netflow-v9-2017*,-netflow-v9-2017.04*" #april indices have failed repeatedly, due to what appears to be differently-index data; may require re-indexing
 	model = builder.BuildNetFlowModel(indexPattern, ipVersion=ipVersion, ipBlacklist=blacklist, ipWhitelist=whitelist)
 
 if __name__ == "__main__":
