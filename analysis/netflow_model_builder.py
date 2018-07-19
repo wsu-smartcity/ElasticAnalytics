@@ -86,7 +86,7 @@ class NetflowModelBuilder(object):
 																	level2Filter=options,
 																	size=0)
 			jsonBucket = self._esClient.aggregate(indexPattern, qDict)
-			print(json.dumps(jsonBucket))
+			#print(json.dumps(jsonBucket))
 			aggDict_Ipv4 = jsonBucket["aggregations"]
 			failCount_Ipv4, docErrors_Ipv4, otherCount_Ipv4 = self._getAggResponseStats(jsonBucket)
 		
@@ -173,7 +173,7 @@ class NetflowModelBuilder(object):
 				plt.show()
 				plt.clf()
 		
-	def BuildIpTrafficGraphicalModel(self, ipTrafficModel, outerKey="src_addr", innerKey="dst_addr", labelVertices=True, labelEdges=False):
+	def BuildIpTrafficGraphicalModel(self, ipTrafficModel, outerKey="src_addr", innerKey="dst_addr", labelVertices=True, labelEdges=True):
 		"""
 		Converts an ip-traffic model into an igraph Graph object. Graph objects can store attributes on edges, vertices, etc,
 		so an entire graphical data structure can be built on top of them. Beware that some of that info may not survive its
@@ -334,7 +334,7 @@ class NetflowModelBuilder(object):
 				#convert these innermost buckets to a histogram from the elastic-aggs query json representation
 				hist = { pair["key"]:pair["doc_count"] for pair in innerBucket[bucket3]["buckets"] }
 				dest_dict[bucket3] = hist
-				
+
 		return d
 
 	def BuildFlowSizeModel(self, indexPattern="netflow*", ipVersion="all", protocolBucket="port", sizeAttrib="netflow.in_bytes", ipBlacklist=[], ipWhitelist=[]):
@@ -419,9 +419,9 @@ class NetflowModelBuilder(object):
 			otherCount += otherCount_Ipv6
 
 		print("BuildFlowSizeModel Aggs errors: failures={}  doc-count-error-bound={}  sum_other_doc_count={}".format(failureCount, docErrorCount, otherCount))
-			
+
 		#print
-			
+
 		#convert the response to something easier to work with, and keys as [src][dst][protocol/port] -> size-histogram
 		d = dict()
 		for srcBucket in aggDict[bucket1]["buckets"]:
@@ -433,12 +433,11 @@ class NetflowModelBuilder(object):
 				for protoBucket in destBucket[bucket3]["buckets"]:
 					protocol = protoBucket["key"] #either a protocol or port #
 					protocol_dict = dest_dict.setdefault(protocol, dict())
-					print("{} BUCKET: {}".format(bucket4, protoBucket))
 					#convert these innermost buckets to a histogram from the elastic-aggs query json representation
-					hist = { pair["key"]:pair["doc_count"] for pair in protocolBucket[bucket4]["buckets"] }
+					hist = { pair["key"]:pair["doc_count"] for pair in protoBucket[bucket4]["buckets"] } #maps integer byte-counts to their frequency; yes, it is dopey.
 					protocol_dict[bucket4] = hist
 
-		return aggDict
+		return d
 
 	def BuildNetFlowModel(self, indexPattern="netflow*", ipVersion="all", ipBlacklist=None, ipWhitelist=None):
 		"""
