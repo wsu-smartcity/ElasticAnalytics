@@ -213,7 +213,11 @@ class NetFlowModel(object):
 		pass
 	
 	def Save(self, fpath):
-		self._graph.write_pickle(fpath)
+		if ".pickle" not in fpath:
+			savePath = fpath+".pickle"
+		else:
+			savePath = fpath
+		self._graph.write_pickle(savePath)0
 
 	def Read(self, fpath):
 		self._graph = igraph.Graph.Read_Pickle(fpath)

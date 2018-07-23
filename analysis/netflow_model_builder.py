@@ -515,7 +515,7 @@ def main():
 	such combinations of the two can be achieved with only one of include/exclude and a decent regex. Passing both
 	should be avoided because of its ambiguous meaning, but technically because it isn't clear in which order each
 	should be applied (excluding a set of regexes, then including itm etc). Try to stick with one. Elastic also
-	returns errors when passing a single item inclue list and an exclude regex, so elastic's implementation is sketchy.
+	returns errors when passing a single item include list and an exclude regex, so elastic's implementation is sketchy.
 	
 	Regexes work for ip fields in include/exclude clauses, but its ill-advised. Some of our indices complain about the datatype.
 	Elasticsearch docs specify using only arrays of values in the include/exclude clause of aggs queries, not regexes,
@@ -528,25 +528,25 @@ def main():
 	blacklist = None
 	whitelist = ["192.168.2.0/24"]
 	
-	whitelist = [	"192.168.2.10",
-					"192.168.2.101",
-					"192.168.2.102",
-					"192.168.2.103",
-					"192.168.2.104",
-					"192.168.2.105",
-					"192.168.2.106",
-					"192.168.2.107",
-					"192.168.2.108"]
+	whitelist = ["192.168.2.10",
+				"192.168.2.101",
+				"192.168.2.102",
+				"192.168.2.103",
+				"192.168.2.104",
+				"192.168.2.105",
+				"192.168.2.106",
+				"192.168.2.107",
+				"192.168.2.108"]
 	
 	#whitelist = "192\.168\.(2|0|1)\..*"
 	#whitelist = "192\.168\.2\..*"
 	#whitelist = None
 	indexPattern = "netflow*"
 	indexPattern = "netflow-v9-2017*"
-	#use '-' to exclude specific indices or patterns
+	#uses '-' to exclude specific indices or index-patterns
 	indexPattern = "netflow-v9-2017*,-netflow-v9-2017.04*" #april indices have failed repeatedly, due to what appears to be differently-index data; may require re-indexing
 	model = builder.BuildNetFlowModel(indexPattern, ipVersion=ipVersion, ipBlacklist=blacklist, ipWhitelist=whitelist)
-
+	model.Save("pickled_model.pickle")
+	
 if __name__ == "__main__":
 	main()
-		

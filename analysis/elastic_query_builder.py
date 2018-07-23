@@ -56,6 +56,7 @@ class QueryBuilder(object):
 								bucketType: {
 									docValueType: docValue,
 									"size":40000 #see header, per @size
+									#"shard_size":40000 #elastic docs specify this as an option, but it breaks the queries. The docs don't specify proper usage of this param.
 								}
 							}
 		
@@ -78,7 +79,6 @@ class QueryBuilder(object):
 		"""
 		qDict = {
 			"size": size,
-			"aggs" : {}
 		}
 		qDict["aggs"] = self._buildAggBucketDict(bucketName, bucketType, docValueType, docValue, qDict, options)
 

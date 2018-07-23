@@ -4,3 +4,5 @@
 *jpg
 *jpeg
 analysis/addrs.txt
+analysis/pickled_model.pickle
+analysis/pickled_model
