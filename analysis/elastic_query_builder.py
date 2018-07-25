@@ -140,7 +140,7 @@ class QueryBuilder(object):
 			aggDict["aggs"] = bucket
 			aggDict = bucket[bucketName]
 		
-		print("Agg query: "+str(json.dumps(nestedDict, indent=2)))
+		#print("Agg query: "+str(json.dumps(nestedDict, indent=2)))
 		
 		return nestedDict
 

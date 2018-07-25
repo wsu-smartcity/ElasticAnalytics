@@ -126,6 +126,7 @@ class NetFlowModel(object):
 				if not self._addEdgeAttribute(src, dst, modelName, model):
 					print("Adding edge attribute {} failed in MergeEdgeModel() for ({},{})".format(modelName, src, dst))
 					succeeded = False
+				else:
 					self._edgeModels.append(modelName)
 					
 		return succeeded
@@ -144,7 +145,6 @@ class NetFlowModel(object):
 		if len(self._graph.vs) < 200:
 			try:
 				visual_style = {}
-				visual_style["vertex_size"] = 15
 				visual_style["vertex_color"] = "green"
 				if labelVertices:
 					try:
@@ -217,7 +217,7 @@ class NetFlowModel(object):
 			savePath = fpath+".pickle"
 		else:
 			savePath = fpath
-		self._graph.write_pickle(savePath)0
+		self._graph.write_pickle(savePath)
 
 	def Read(self, fpath):
 		self._graph = igraph.Graph.Read_Pickle(fpath)

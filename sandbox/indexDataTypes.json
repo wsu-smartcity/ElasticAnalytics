@@ -57,6 +57,8 @@ Bro:
 		"type": "log"
 	},
 
+For fields, see:
+https://www.elastic.co/guide/en/beats/winlogbeat/5.6/exported-fields-eventlog.html
 
 WinlogBeat:
 	{
