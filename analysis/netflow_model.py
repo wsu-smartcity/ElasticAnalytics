@@ -131,7 +131,37 @@ class NetFlowModel(object):
 					
 		return succeeded
 
-	def PlotIpTrafficModel(self, labelVertices=True, labelEdges=True):
+	"""
+	def GetConditionalInterhostPortModel(self, portEvents):
+		""
+		Given a list of ports
+		""
+		
+		if 
+	"""
+	
+	def QueryInterhostPortProbability(self, ports):
+		if "port" not in self._edgeModels:
+			print("ERROR 'port' not in edgeModels, cannot query port distributions")
+			return -1.0
+			
+		pPorts = 0.0
+		minProb = 1000
+		maxProb = -1.0
+		for h1 in self._graph.vs:
+			for edge in self._graph.es.select(_source=h1.index):
+				#aggregate the ports for this edge
+				edgeModel = edge["port"]
+				z = sum([ in portModel.values()])
+				portFlows = sum([edgeModel["port"] for port in ports if port in edgeModel])
+				pPorts = portFlows / z
+				#update min and max
+				minProb = min(pPorts, minProb)
+				maxProb = max(pPorts, maxProb)
+					
+		return pPorts, minProb, maxProb
+
+	def PlotIpTrafficModel(self, labelVertices=True, labelEdges=True, nightScheme=True):
 		"""
 		Plots and shows the ip-graph of hosts in @g. The graph is only plotted if it has less than some modest
 		and plottable number of vertices, as many graphs are too huge to fit in memory. If needed, a solution
@@ -141,11 +171,19 @@ class NetFlowModel(object):
 		Returns: The plot, or None if a failure occurred.
 		"""
 		graphPlot = None
+		visual_style = {}
+		if nightScheme:
+			#see igraph.drawing.colors.known_colors list for all color options
+			visual_style["background"] = "grey8"
+			visual_style["vertex_label_color"] = "grey90"
+			visual_style["edge_label_color"] = "grey90"
+			visual_style["edge_color"] = "grey60"
+			visual_style["vertex_color"] = "green3"
+		else:
+			visual_style["vertex_color"] = "green"
 		
 		if len(self._graph.vs) < 200:
 			try:
-				visual_style = {}
-				visual_style["vertex_color"] = "green"
 				if labelVertices:
 					try:
 						visual_style["vertex_label"] = self._graph.vs["name"]

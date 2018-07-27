@@ -388,7 +388,7 @@ class NetflowModelBuilder(object):
 			failCount_Ipv6, docErrors_Ipv6, otherCount_Ipv6 = self._getAggResponseStats(jsonBucket)
 
 		#aggregate results per selected ip traffic type
-		if ipVersion.lower() == "ipv4":		
+		if ipVersion.lower() == "ipv4":
 			aggDict = aggDict_Ipv4
 			failureCount, docErrorCount, otherCount = failCount_Ipv4, docErrors_Ipv4, otherCount_Ipv4
 		elif ipVersion.lower() == "ipv6":
@@ -436,6 +436,12 @@ class NetflowModelBuilder(object):
 		
 		Of course, @ipBlacklist/@ipWhitelist should be treated as mutually exclusive.
 		"""
+		
+		#friendly reminder about ip black/whitelists
+		if ipBlacklist is not None or ipWhitelist is not None:
+			print("REMINDER: When passing @ipBlacklist or @ipWhitelist, prefer a raw list of fully specified host ips.")
+			print("          CIDR prefixes are supported but untested; also, ip fields don't support reguler expressions.")
+			print("          See elastic docs on include/exclude params of terms queries for specific info.")
 		
 		#query the netflow indices for all traffic between hosts
 		ipModel = self.BuildIpTrafficModel(indexPattern, ipVersion=ipVersion, ipBlacklist=ipBlacklist, ipWhitelist=ipWhitelist)
@@ -522,7 +528,12 @@ def main():
 				"192.168.2.106",
 				"192.168.2.107",
 				"192.168.2.108",
-				"192.168.0.11"]
+				"192.168.0.11",
+				"255.255.255.255",
+				"127.0.0.1",
+				"128.0.0.0",
+				"0.0.0.0",
+				"192.255.255.0"]
 	
 	#whitelist = "192\.168\.(2|0|1)\..*"
 	#whitelist = "192\.168\.2\..*"
