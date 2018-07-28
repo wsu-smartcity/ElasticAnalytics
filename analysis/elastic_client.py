@@ -114,4 +114,8 @@ class ElasticClient(object):
 			}
 		"""
 		r = requests.post(self._servAddr+index+"/_search", data=json.dumps(qDict), headers=self._headers)
+		
+		with open("junk.json","w+") as ofile:
+			ofile.write(r.text)
+		
 		return r.json()

@@ -152,7 +152,7 @@ class NetFlowModel(object):
 			for edge in self._graph.es.select(_source=h1.index):
 				#aggregate the ports for this edge
 				edgeModel = edge["port"]
-				z = sum([ in portModel.values()])
+				z = sum([portModel.values()])
 				portFlows = sum([edgeModel["port"] for port in ports if port in edgeModel])
 				pPorts = portFlows / z
 				#update min and max

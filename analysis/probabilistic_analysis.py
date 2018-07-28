@@ -5,7 +5,7 @@ from netflow_model_builder import NetflowModelBuilder
 class ModelAnalyzer(object):
 	def __init__(self, netflowModel):
 		self._netflowModel = netflowModel
-		self._winlogmodel = winlogModel
+		self._winlogModel = winlogModel
 		
 	def _lateralMovementAnalysis(self):
 		"""

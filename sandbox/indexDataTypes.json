@@ -86,40 +86,69 @@ WinlogBeat:
 
 
 Packetbeat:
-	{
-		"_id": "AV8eyO7Pyn_BE1UV8hXL",
-		"_index": "packetbeat-2017.10.15",
-		"_score": 1.0,
-		"_source": {
-			"@timestamp": "2017-10-15T07:00:19.996Z",
-			"beat": {
-				"hostname": "HP-B58-04",
-				"name": "HP-B58-04",
-				"version": "5.0.0"
-			},
-			"dest": {
-				"ipv6": "ff02::1:2",
-				"mac": "33:33:00:01:00:02",
-				"port": 547
-			},
-			"final": false,
-			"flow_id": "QQIA//////8M//8s//8BAAEzMwABAAJkAGplANr/AgAAAAAAAAAAAAAAAQAC/oAAAAAAAAC5pqwr8OlLfyMCIgI",
-			"last_time": "2017-10-15T07:00:14.851Z",
-			"source": {
-				"ipv6": "fe80::b9a6:ac2b:f0e9:4b7f",
-				"mac": "64:00:6a:65:00:da",
-				"port": 546,
-				"stats": {
-					"net_bytes_total": 155,
-					"net_packets_total": 1
-				}
-			},
-			"start_time": "2017-10-15T07:00:14.851Z",
-			"transport": "udp",
-			"type": "flow"
-		},
-		"_type": "flow"
-	},
+{
+        "_index": "packetbeat-2017.10.11",
+        "_type": "dns",
+        "_id": "AV8LhMXmyn_BE1UV4cR-",
+        "_score": 1,
+        "_source": {
+          "@timestamp": "2017-10-11T13:12:36.060Z",
+          "beat": {
+            "hostname": "HP-B58-04",
+            "name": "HP-B58-04",
+            "version": "5.0.0"
+          },
+          "bytes_in": 35,
+          "bytes_out": 51,
+          "client_ip": "192.168.0.14",
+          "client_port": 51465,
+          "client_proc": "",
+          "client_server": "",
+          "direction": "out",
+          "dns": {
+            "additionals_count": 0,
+            "answers": [
+              {
+                "class": "IN",
+                "data": "178.255.83.1",
+                "name": "ocsp.comodoca.com.",
+                "ttl": "300",
+                "type": "A"
+              }
+            ],
+            "answers_count": 1,
+            "authorities_count": 0,
+            "flags": {
+              "authentic_data": false,
+              "authoritative": false,
+              "checking_disabled": false,
+              "recursion_available": true,
+              "recursion_desired": true,
+              "truncated_response": false
+            },
+            "id": 28376,
+            "op_code": "QUERY",
+            "question": {
+              "class": "IN",
+              "etld_plus_one": "comodoca.com.",
+              "name": "ocsp.comodoca.com.",
+              "type": "A"
+            },
+            "response_code": "NOERROR"
+          },
+          "ip": "192.168.0.1",
+          "method": "QUERY",
+          "port": 53,
+          "proc": "",
+          "query": "class IN, type A, ocsp.comodoca.com.",
+          "resource": "ocsp.comodoca.com.",
+          "responsetime": 135,
+          "server": "",
+          "status": "OK",
+          "transport": "udp",
+          "type": "dns"
+        }
+      },
 
 	
 
