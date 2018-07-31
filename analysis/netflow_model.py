@@ -78,7 +78,7 @@ class NetFlowModel(object):
 		if any(missingNames):
 			print("ERROR edgeModel keys {}\n ...not in network graph vertices: {}".format(missingNames, vertexNames))
 			isValid = False
-				
+
 		for src in edgeModel.keys():
 			for dst in edgeModel[src].keys():
 				try:
@@ -87,7 +87,7 @@ class NetFlowModel(object):
 					print("ERROR no edge ({},{}) in graph".format(src,dst))
 					traceback.print_exc()
 					isValid = False
-					
+
 		if modelName in self._graph.es.attribute_names():
 			print("ERROR edge model name {} already exists".format(modelName))
 			isValid = False
@@ -131,20 +131,137 @@ class NetFlowModel(object):
 					
 		return succeeded
 
-	"""
-	def GetConditionalInterhostPortModel(self, portEvents):
-		""
-		Given a list of ports
-		""
+	def _getHostVertexIndex(self, vname):
+		#Given a hostname (vertex name) return its vertex index in the igraph object, or throw if not found.
+		vId = -1
+		vIds = [v for v in self._graph.vs if v["name"] == vname]
+		if len(vIds) == 0:
+			#vertex not found, so raise exception
+			raise Exception('ERROR vertex {} not found'.format(vname))
+		elif len(vIds) > 1:
+			#more than one vertex found under @vname, which violates our model since vertices should be unique
+			raise Exception('ERROR multiple ({}) vertices like {} found'.format(len(vIds), vname))
+		else:
+			#normal path, exactly one vertex found
+			vId = vIds[0]
+			
+		return vId
 		
-		if 
-	"""
+	def _getVertex(self, vId):
+		return self._graph.vs[vId]
+		
+	def _getVertexByName(self, fname):
+		return self._getVertex(self._getHostVertexIndex(vname))
+
+	def _isValidProbabilityQuery(self, query):
+		vnames = [v["name"] for v in self._graph.vs]
+		isValid = True
+		
+		#verify src is in model, if passed
+		if "src" in query.keys() and query["src"] not in vnames:
+			print("ERROR @src passed in query, but name not in model: {}".format(query["src"]))
+			isValid = False
+		#verify dst is in model, if passed
+		if "dst" in query.keys() and query["dst"] not in vnames:
+			print("ERROR @dst passed in query, but name not in model: {}".format(query["dst"]))
+			isValid = False
+		#verify an edge exists between src and dst if both passed
+		if "dst" in query.keys() and "src" in query.keys():
+			srcId = self._getHostVertexIndex(query["src"])
+			dstId = self._getHostVertexIndex(query["dst"])
+			edges = self._graph.es.select(_source=srcId, _target=dstId)
+			if len(edges) == 0:
+				print("ERROR no edge found between hosts {} and {}".format(query["src"], query["dst"]))
+				isValid = False
+		
+		if "protocol" in query.keys() and "protocol" not in self._edgeModels:
+			print("ERROR @protocol not in stored edge models of netflow model")
+			isValid = False
+		if "port" in query.keys() and "port" not in self._edgeModels:
+			print("ERROR @port not in stored edge models of netflow model")
+			isValid = False
+
+		return isValid
+		
+	def ProbabilisticQuery(self, query):
+		"""
+		qString cases:
+			1) All fixed variables:
+				(src : 192.168.0.3) (dst : 192.168.0.4) (protocol : 6) (port: 22)
+				In english: 'Get conditional probability of tcp flow over port 22 between 192.168.0.3 and 192.168.0.4'
+			
+			2) One host:
+			
+				a. Conditional distribution for outbound flows from host 192.168.0.3:
+				(src : 192.168.0.3) (protocol : 6) (port: 22)
+				
+				b. Conditional distribution for inbound flow to host 192.168.0.4:
+				(dst : 192.168.0.4) (protocol : 6) (port: 22)
+				
+			3)	All hosts:
+				a. Evaluate probability of tcp-ssh traffic summed over all hosts
+				(protocol : 6) (port: 22)
 	
+			(src : 192.168.0.3) (dst : 192.168.0.4) (protocol : 6) (port: 22) (in_bytes : 350)
+	
+	
+		The query occurs in steps:
+			1) Get edges for passed hosts, if any, and aggregate these edges together
+			2) Conditon on passed variables: protocol, then port, then minute characteristics (flow count/bytes, duration, etc)
+		"""
+		prob = 0.0
+		
+		#basic query validation
+		if not self._isValidquery(query):
+			raise Exception("Invalid query; see previous output")
+		
+		if "src" in query.keys():
+			srcIndex = self._getHostVertexIndex(query["src"])
+		if "dst" in query.keys():
+			dstIndex = self._getHostVertexIndex(query["dst"])
+		
+		if "src" in query.keys() and "dst" in query.keys():
+			edges = self._graph.es.select(_source=srcIndex, _target=dstIndex)
+		elif "src" in query.keys():
+			edges = self._graph.es.select(_source=srcIndex)
+		elif "dst" in query.keys():
+			edges = self._graph.es.select(_target=dstIndex)
+		else:
+			#get all edges, entire network
+			edges = self._graph.es
+			
+		#Drill into the histograms on all selected edges...
+		#for now, treat @protocol and @port as separate variables, though port has a logical dependence on network layer protocol (tcp, udp, etc)
+		if "protocol" in query.keys():
+			hists = [edge["protocol"] for edge in edges]
+			hist = self._mergeHistograms(hists)
+		elif "port" in query.keys():
+			hists = [edge["port"] for edge in edges]
+			hist = self._mergeHistograms(hists)
+		 
+		 
+		 
+		 
+	def _aggregateHistograms(self, hists):
+		"""
+		A common taks for statistical analyses will be merging multiple histograms together,
+		where each histogram is a dictionary of type @key->scalar-frequency. Overlapping
+		keys thus have their frequencies added together.
+		"""
+		keys = [key for hist in hists for key in hist.keys()]
+		mergedHist = dict([(key:0) for key in keys])
+
+		for hist in hists:
+			for key, value in hist.items():
+				mergedHist[key] += value
+
+		return mergedHist
+			
 	def QueryInterhostPortProbability(self, ports):
 		if "port" not in self._edgeModels:
 			print("ERROR 'port' not in edgeModels, cannot query port distributions")
 			return -1.0
-			
+
 		pPorts = 0.0
 		minProb = 1000
 		maxProb = -1.0

@@ -37,8 +37,38 @@ class ModelAnalyzer(object):
 		
 		
 def main():
+	#Build the client
+	servAddr = "http://192.168.0.91:80/elasticsearch"
+	client = ElasticClient(servAddr)
+	#Build the netflow model
+	builder	= NetflowModelBuilder(client)
+	ipVersion = "ipv4"
+	blacklist = None
+	whitelist = ["192.168.2.10",
+				"192.168.2.101",
+				"192.168.2.102",
+				"192.168.2.103",
+				"192.168.2.104",
+				"192.168.2.105",
+				"192.168.2.106",
+				"192.168.2.107",
+				"192.168.2.108",
+				"192.168.0.11",
+				"255.255.255.255",
+				"127.0.0.1",
+				"128.0.0.0",
+				"0.0.0.0",
+				"192.255.255.0"]
 	
-
+	indexPattern = "netflow*"
+	indexPattern = "netflow-v9-2017*"
+	#uses '-' to exclude specific indices or index-patterns
+	indexPattern = "netflow-v9-2017*,-netflow-v9-2017.04*" #april indices have failed repeatedly, due to what appears to be differently-index data; may require re-indexing
+	model = builder.BuildNetFlowModel(indexPattern, ipVersion=ipVersion, ipBlacklist=blacklist, ipWhitelist=whitelist)
+	#Build the analyzer
+	analyzer = ModelAnalyzer(model)
+	analyzer.Analyze()
+		
 		
 if __name__ == "__main__":
 	main()
