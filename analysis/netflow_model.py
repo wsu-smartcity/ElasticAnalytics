@@ -148,9 +148,11 @@ class NetFlowModel(object):
 		return vId
 		
 	def _getVertex(self, vId):
+		#Gets a vertex by id @vId, assuming its id is known
 		return self._graph.vs[vId]
 		
-	def _getVertexByName(self, fname):
+	def _getVertexByName(self, vname):
+		#Returns igraph Vertex object corresponding to @vname
 		return self._getVertex(self._getHostVertexIndex(vname))
 
 	def _isValidProbabilityQuery(self, query):
@@ -174,17 +176,64 @@ class NetFlowModel(object):
 				print("ERROR no edge found between hosts {} and {}".format(query["src"], query["dst"]))
 				isValid = False
 		
+		#make sure selected models are actually in the edge models
 		if "protocol" in query.keys() and "protocol" not in self._edgeModels:
 			print("ERROR @protocol not in stored edge models of netflow model")
 			isValid = False
 		if "port" in query.keys() and "port" not in self._edgeModels:
 			print("ERROR @port not in stored edge models of netflow model")
 			isValid = False
-
+		if "in_bytes" in query.keys() and "in_bytes" not in self._edgeModels:
+			print("ERROR @in_bytes not in stored edge models of netflow model")
+			isValid = False
+			
 		return isValid
+		
+	def GetVertexFlowProbability(self, vertexName, mode="IN"):
+		"""
+		Simple to expose, since this info was stored during model construction. Returns the
+		overall unconditional probability of a vertex in the graph, defined as #(v,n) / sum(g,v,n),
+		where #(v,n) represents the number of flows corresponding to @mode.
+		@mode: One of "IN" "OUT" or "ALL", determining whether vertex' probability is determined by incoming,
+				outgoing, or all flows in an out.
+				
+		NOTE: WHEN USING THIS FUNCTION, THINK ABOUT AND ACCOUNT FOR REFLEXIVE EDGES. Not sure how many
+		hosts might have them, but they are an easily overlooked problem case, since a relfexive edge
+		is both incident and outgoing, and could screw up probability calculations, for instance.
+		"""
+		
+		if mode not in {"IN","OUT","ALL"}:
+			raise Exception("ERROR incorrect mode passed to GetVertexFlowProbability(). Must be one of 'IN', 'OUT', or 'ALL'.")
+		if vertexName not in [v["name"] for v in self._graph.vs]:
+			raise Exception("ERROR no such node found in graph: {}".format(vertexName))
+			
+		#get the selected vertex and its id
+		vertex = self._getVertexByName(vertexName)
+		vId = vertex.index
+			
+		#get the flows for the selected node, and the normalization constant for the entire graph under @mode
+		if mode == "IN":
+			#get only the incident flow counts
+			vFlows = [e["weight"] for e in self._graph.es.select(_target=vId)]
+			z = [e["weight"] for v in self._graph.vs for e in self._graph.es.select(_target=v.index)]
+		elif mode == "OUT":
+			#get only the outgoing flow counts
+			vFlows = [e["weight"] for e in self._graph.es.select(_source=vId)]
+			z = [e["weight"] for v in self._graph.vs for e in self._graph.es.select(_source=v.index)]
+		elif mode == "ALL:
+			#get all flows for which the vertex is target or source
+			vFlows = [e["weight"] for e in self._graph.es.select(_source=vId)]
+			vFlows = [e["weight"] for e in self._graph.es.select(_target=vId)]
+			z = [e["weight"] for v in self._graph.vs for e in self._graph.es.select(_source=v.index)]
+			z += [e["weight"] for v in self._graph.vs for e in self._graph.es.select(_target=v.index)]
+	
+		return float(sum(vflows)) / float(sum(z))
 		
 	def ProbabilisticQuery(self, query):
 		"""
+		NOTE: This currently only supports queries to src/dst and only one of port or protocol. The
+		latter must be included.
+		
 		qString cases:
 			1) All fixed variables:
 				(src : 192.168.0.3) (dst : 192.168.0.4) (protocol : 6) (port: 22)
@@ -203,23 +252,35 @@ class NetFlowModel(object):
 				(protocol : 6) (port: 22)
 	
 			(src : 192.168.0.3) (dst : 192.168.0.4) (protocol : 6) (port: 22) (in_bytes : 350)
-	
+			(src : 192.168.0.3) (dst : 192.168.0.4) (protocol : 6) (port: 22) (in_bytes : 350)
 	
 		The query occurs in steps:
 			1) Get edges for passed hosts, if any, and aggregate these edges together
 			2) Conditon on passed variables: protocol, then port, then minute characteristics (flow count/bytes, duration, etc)
+			
+		Note that this query currently only covers a very, very small subset of variables in the/a full Bayesian
+		conditional probability distribution over the random events (src,dst,protocol,port,flow_characteristics),
+		if any of these variables are allowed to be omitted or "port:*". But the use-case of only allowing
+		src/dest to be unbound should be sufficient for our probability models; otherwise full
+		queries over the random variables would require a big bayesian query pipeline to be written.
+		
+		Precondition: A query is valid iff its src/dst hosts are in the model, and likewise any models like "port" "protocol" or "in_bytes".
+		the query may specify only one or neither of src/dst, but must specify port, protocol, or in_bytes if they are passed. This is 
+		so only straightforward queries can be calculated, which is all we really need, except maybe allowing src/dst to be aggregated.
 		"""
 		prob = 0.0
 		
 		#basic query validation
-		if not self._isValidquery(query):
+		if not self._isValidProbabilityQuery(query):
 			raise Exception("Invalid query; see previous output")
 		
+		#get the src/dst host vertices before querying them
 		if "src" in query.keys():
 			srcIndex = self._getHostVertexIndex(query["src"])
 		if "dst" in query.keys():
 			dstIndex = self._getHostVertexIndex(query["dst"])
 		
+		#get the edges selected based on src and dst host
 		if "src" in query.keys() and "dst" in query.keys():
 			edges = self._graph.es.select(_source=srcIndex, _target=dstIndex)
 		elif "src" in query.keys():
@@ -232,16 +293,20 @@ class NetFlowModel(object):
 			
 		#Drill into the histograms on all selected edges...
 		#for now, treat @protocol and @port as separate variables, though port has a logical dependence on network layer protocol (tcp, udp, etc)
+		#if "in_bytes" in query.keys():  #IGNORE FLOW CHARACTERISTIC MODELS, THEY ARE NOT SUPPORTED YET
 		if "protocol" in query.keys():
 			hists = [edge["protocol"] for edge in edges]
 			hist = self._mergeHistograms(hists)
+			count = hist.get( default=0.0)
+			z = float(sum(hist.values()))
 		elif "port" in query.keys():
 			hists = [edge["port"] for edge in edges]
 			hist = self._mergeHistograms(hists)
-		 
-		 
-		 
-		 
+			count = hist.get( default=0.0)
+			z = float(sum(hist.values()))
+		
+		return count / z
+
 	def _aggregateHistograms(self, hists):
 		"""
 		A common taks for statistical analyses will be merging multiple histograms together,

@@ -205,9 +205,13 @@ class NetflowModelBuilder(object):
 			for v in g.vs:
 				v["vertex_label"] = v["name"]
 
-		#add the edges
+		#add the edges, with weights corresponding the #netflows between the end hosts
 		for edge in es:
 			g.add_edge(edge[0], edge[1], weight=edge[2])
+			
+		#add weights to the vertices themselves, according to the number of incoming flows to the vertex
+		for v in g.vs:
+			v["weight"] = sum([e["weight"] for e in g.es.select(_source=v.index)])
 		
 		if labelEdges:
 			g.es["label"] = [str(weight) for weight in g.es["weight"]]
