@@ -12,6 +12,9 @@ tidy up the query generation significantly, which below is somewhat wedded to 't
 or at least very few aggregation query types. There are probably pretty good software patterns in the wild
 for generating queries, in python or other languages that could be leveraged. Also consider modeling it
 off the existing python-elastic clients out there.
+
+Use the console to develop queries:
+	http://192.168.0.91/app/kibana#/dev_tools/console?_g=()
 """
 
 import json

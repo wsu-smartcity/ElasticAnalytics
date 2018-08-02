@@ -220,7 +220,7 @@ class NetFlowModel(object):
 			#get only the outgoing flow counts
 			vFlows = [e["weight"] for e in self._graph.es.select(_source=vId)]
 			z = [e["weight"] for v in self._graph.vs for e in self._graph.es.select(_source=v.index)]
-		elif mode == "ALL:
+		elif mode == "ALL":
 			#get all flows for which the vertex is target or source
 			vFlows = [e["weight"] for e in self._graph.es.select(_source=vId)]
 			vFlows = [e["weight"] for e in self._graph.es.select(_target=vId)]
@@ -296,12 +296,12 @@ class NetFlowModel(object):
 		#if "in_bytes" in query.keys():  #IGNORE FLOW CHARACTERISTIC MODELS, THEY ARE NOT SUPPORTED YET
 		if "protocol" in query.keys():
 			hists = [edge["protocol"] for edge in edges]
-			hist = self._mergeHistograms(hists)
+			hist = self._aggregateHistograms(hists)
 			count = hist.get( default=0.0)
 			z = float(sum(hist.values()))
 		elif "port" in query.keys():
 			hists = [edge["port"] for edge in edges]
-			hist = self._mergeHistograms(hists)
+			hist = self._aggregateHistograms(hists)
 			count = hist.get( default=0.0)
 			z = float(sum(hist.values()))
 		
@@ -314,7 +314,7 @@ class NetFlowModel(object):
 		keys thus have their frequencies added together.
 		"""
 		keys = [key for hist in hists for key in hist.keys()]
-		mergedHist = dict([(key:0) for key in keys])
+		mergedHist = dict([(key,0) for key in keys])
 
 		for hist in hists:
 			for key, value in hist.items():
@@ -322,26 +322,30 @@ class NetFlowModel(object):
 
 		return mergedHist
 			
-	def QueryInterhostPortProbability(self, ports):
+	def GetNetworkPortModel(self, ports):
+		"""
+		Returns a port histogram across the entire network, of type port# -> frequency.
+		One can then easily query 
+		"""
 		if "port" not in self._edgeModels:
 			print("ERROR 'port' not in edgeModels, cannot query port distributions")
 			return -1.0
+			
+		print("WARNING: port model returned by GetNetworkPortModel() not yet conditioned on network layer protocol (udp, tcp, etc)")
 
-		pPorts = 0.0
-		minProb = 1000
-		maxProb = -1.0
-		for h1 in self._graph.vs:
-			for edge in self._graph.es.select(_source=h1.index):
-				#aggregate the ports for this edge
-				edgeModel = edge["port"]
-				z = sum([portModel.values()])
-				portFlows = sum([edgeModel["port"] for port in ports if port in edgeModel])
-				pPorts = portFlows / z
-				#update min and max
-				minProb = min(pPorts, minProb)
-				maxProb = max(pPorts, maxProb)
-					
-		return pPorts, minProb, maxProb
+		portModel = dict()
+		for edge in self._graph.es:
+			#aggregate the ports for this edge
+			edgeModel = edge["port"]
+			#print("PORT MODEL: {}".format(edgeModel))
+			#print("PROTOCOL MODEL: {}".format(edge["protocol"]))
+			for port, frequency in edgeModel["port"].items():
+				if port in portModel:
+					portModel[port] += frequency
+				else:
+					portModel[port] = frequency
+
+		return portModel
 
 	def PlotIpTrafficModel(self, labelVertices=True, labelEdges=True, nightScheme=True):
 		"""

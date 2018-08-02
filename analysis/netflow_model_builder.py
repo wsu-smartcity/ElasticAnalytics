@@ -234,7 +234,7 @@ class NetflowModelBuilder(object):
 		"""
 		bucket1 = "src_addr"
 		bucket2 = "dst_addr"
-		bucket3 = "protocol"		
+		bucket3 = protocolBucket	
 		options = dict()
 		if ipBlacklist is not None and len(ipBlacklist) > 0:
 			options["exclude"] = ipBlacklist
@@ -246,7 +246,7 @@ class NetflowModelBuilder(object):
 		if protocolBucket.lower() == "port":
 			bucket3Key = "netflow.l4_dst_port"
 		else:
-			bucket3Key = "protocol"
+			bucket3Key = "netflow.protocol"
 
 		#aggregate host-host ipv4 traffic by port/protocol
 		if ipVersion.lower() in ["ipv4","all"]:
@@ -255,7 +255,7 @@ class NetflowModelBuilder(object):
 																	bucket3,
 																	"netflow.ipv4_src_addr",
 																	"netflow.ipv4_dst_addr",
-																	"netflow.l4_dst_port",
+																	bucket3Key,
 																	level1BucketType="terms",
 																	level2BucketType="terms",
 																	level3BucketType="terms",
@@ -279,7 +279,7 @@ class NetflowModelBuilder(object):
 																	bucket3,
 																	"netflow.ipv6_src_addr",
 																	"netflow.ipv6_dst_addr",
-																	"netflow.l4_dst_port",
+																	bucket3Key,
 																	level1BucketType="terms",
 																	level2BucketType="terms",
 																	level3BucketType="terms",
@@ -323,7 +323,7 @@ class NetflowModelBuilder(object):
 				dest_dict = src_dict.setdefault(dest_addr, dict())
 				#convert these innermost buckets to a histogram from the elastic-aggs query json representation
 				hist = { pair["key"]:pair["doc_count"] for pair in innerBucket[bucket3]["buckets"] }
-				dest_dict[bucket3] = hist
+				dest_dict[protocolBucket] = hist
 
 		return d
 
@@ -424,7 +424,7 @@ class NetflowModelBuilder(object):
 					protocol_dict = dest_dict.setdefault(protocol, dict())
 					#convert these innermost buckets to a histogram from the elastic-aggs query json representation
 					hist = { pair["key"]:pair["doc_count"] for pair in protoBucket[bucket4]["buckets"] } #maps integer byte-counts to their frequency; yes, it is dopey.
-					protocol_dict[bucket4] = hist
+					protocol_dict[sizeAttrib] = hist
 
 		return d
 
@@ -458,7 +458,7 @@ class NetflowModelBuilder(object):
 		#print(str(protocolModel))
 		if not flowModel.MergeEdgeModel(protocolModel, "protocol"):
 			print("ERROR could not merge protocol model into flow model")
-
+		
 		#aggregate host-to-host traffic by layer-4 dest port. Some, but not all, dest-port usage is indicative of the application layer protocol (ftp, http, etc).
 		portModel = self.BuildProtocolModel(indexPattern, ipVersion=ipVersion, protocolBucket="port", ipBlacklist=ipBlacklist, ipWhitelist=ipWhitelist)
 		if not flowModel.MergeEdgeModel(portModel, "port"):

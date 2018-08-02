@@ -1,11 +1,12 @@
 import sys
-from netflow_model_builder import NetflowModelBuilder
 
+from netflow_model_builder import NetflowModelBuilder
+from elastic_client import ElasticClient
 
 class ModelAnalyzer(object):
 	def __init__(self, netflowModel):
 		self._netflowModel = netflowModel
-		self._winlogModel = winlogModel
+		#self._winlogModel = winlogModel
 		
 	def _lateralMovementAnalysis(self):
 		"""
@@ -22,7 +23,17 @@ class ModelAnalyzer(object):
 		#broEvents = ["SMB_MONITOR"]
 		#winlogEventIds = [528,552,4648]
 		#Query the netflow model for netflow events
-		self._netflowModel.GetConditionalInterhostPortModel(portEvents)
+		portModel = self._netflowModel.GetNetworkPortModel(portEvents)
+		z = float(sum(portModel.values()))
+		portProbs = []
+		for port in portEvents:
+			if port in portModel:
+				pPort = portModel[port] / z
+			else:
+				pPort = 0.0
+			portProbs.append(pPort)
+		
+		print("Port probabilities: {}".format(portProbs))
 		
 		
 	def Analyze(self):
