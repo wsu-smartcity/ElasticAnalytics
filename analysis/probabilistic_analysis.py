@@ -1,13 +1,13 @@
 import sys
 
-from netflow_model_builder import NetflowModelBuilder
+from model_builder import ModelBuilder
 from elastic_client import ElasticClient
 
 class ModelAnalyzer(object):
-	def __init__(self, netflowModel):
+	def __init__(self, netflowModel, winlogModel):
 		self._netflowModel = netflowModel
-		#self._winlogModel = winlogModel
-		
+		self._winlogModel = winlogModel
+
 	def _lateralMovementAnalysis(self):
 		"""
 		Sandbox code for modeling and exploring the detection of lateral movement instances.
@@ -21,7 +21,7 @@ class ModelAnalyzer(object):
 		#Implements DistributedComponentObjectModel
 		portEvents = [80,443,8443,8082]
 		#broEvents = ["SMB_MONITOR"]
-		#winlogEventIds = [528,552,4648]
+		winlogEventIds = [528,552,4648]
 		#Query the netflow model for netflow events
 		portModel = self._netflowModel.GetNetworkPortModel(portEvents)
 		z = float(sum(portModel.values()))
@@ -35,6 +35,40 @@ class ModelAnalyzer(object):
 		
 		print("Port probabilities: {}".format(portProbs))
 		
+		pEvents = self._getEventUnionProbability(winlogEventIds)
+		print("Unconditional probability of event ids: {}".format(pEvents))
+		print("Event probabilities: {}".format(self._getEventProbabilities(winlogEventIds).items()))
+		
+	def _getEventProbabilities(self, eventIds):
+		return dict([(eventId, self._getEventProbability(eventId)) for eventId in eventIds])
+		
+	def _getEventProbability(self, eventId, host="any"):
+		"""
+		@host: Either "any" or pass the specific hostname of interest
+		"""
+		pEvent = 0.0
+		if host == "any":
+			for host in self._winlogModel:
+				hist = self._winlogModel[host]["event_id"]
+				z = float(sum(hist.values()))
+				if eventId in hist:
+					pEvent += (float(hist[eventId]) / z)
+		else:
+			hist = self._winlogModel[host]["event_id"]
+			z = float(sum(hist.values()))
+			if eventId in hist:
+				pEvent += (float(hist[eventId]) / z)
+		
+		return pEvent
+		
+	def _getEventUnionProbability(self, eventIds):
+		"""
+		The winlog event-id model is a set of per-host multinomial distributions over event-ids:
+			host -> event-id -> frequency
+			
+		Given a list of event ids, this aggregate the probability of any of those events in the model.
+		"""
+		return float(sum(self._getEventProbabilities(eventIds).values()))
 		
 	def Analyze(self):
 		"""
@@ -52,7 +86,7 @@ def main():
 	servAddr = "http://192.168.0.91:80/elasticsearch"
 	client = ElasticClient(servAddr)
 	#Build the netflow model
-	builder	= NetflowModelBuilder(client)
+	builder	= ModelBuilder(client)
 	ipVersion = "ipv4"
 	blacklist = None
 	whitelist = ["192.168.2.10",
@@ -75,9 +109,10 @@ def main():
 	indexPattern = "netflow-v9-2017*"
 	#uses '-' to exclude specific indices or index-patterns
 	indexPattern = "netflow-v9-2017*,-netflow-v9-2017.04*" #april indices have failed repeatedly, due to what appears to be differently-index data; may require re-indexing
-	model = builder.BuildNetFlowModel(indexPattern, ipVersion=ipVersion, ipBlacklist=blacklist, ipWhitelist=whitelist)
+	netflowModel = builder.BuildNetFlowModel(indexPattern, ipVersion=ipVersion, ipBlacklist=blacklist, ipWhitelist=whitelist)
+	winlogModel = builder.BuildWinlogEventIdModel("winlogbeat*")
 	#Build the analyzer
-	analyzer = ModelAnalyzer(model)
+	analyzer = ModelAnalyzer(netflowModel, winlogModel)
 	analyzer.Analyze()
 		
 		

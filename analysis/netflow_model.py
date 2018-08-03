@@ -331,7 +331,7 @@ class NetFlowModel(object):
 			print("ERROR 'port' not in edgeModels, cannot query port distributions")
 			return -1.0
 			
-		print("WARNING: port model returned by GetNetworkPortModel() not yet conditioned on network layer protocol (udp, tcp, etc)")
+		print("REMINDER: port model returned by GetNetworkPortModel() not yet conditioned on network layer protocol (udp, tcp, etc)")
 
 		portModel = dict()
 		for edge in self._graph.es:

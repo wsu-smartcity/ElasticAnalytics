@@ -25,7 +25,11 @@ import json
 import igraph
 import collections
 
-class NetflowModelBuilder(object):
+#not needed in this class, just for testing and monkeying
+import pandas as pd
+import matplotlib.pyplot as plt
+
+class ModelBuilder(object):
 	def __init__(self, client):
 		self._esClient = client
 		self._queryBuilder = QueryBuilder()
@@ -45,6 +49,44 @@ class NetflowModelBuilder(object):
 
 		return failureCount, docCountError, otherDocCount
 
+	def BuildWinlogEventIdModel(self, indexPattern="winlogbeat*"):
+		"""
+		All we are interested in for now is a simple per-host event model, which only requires building per-host histograms
+		of the events logged on that machine, which is given by the event-id field of the winlogbeat data.
+		That means all we need to do is a simple aggs query to the winlog indices, the aggregate these event_ids and
+		bucket the aggregates by host, which is a cinch.
+		"""
+		bucket1 = "host"
+		bucket2 = "event_id"
+		
+		qDict = self._queryBuilder.BuildDoubleAggregateQuery(bucket1, \
+										bucket2, \
+										"computer_name", \
+										"event_id", \
+										level1BucketType="terms", \
+										level2BucketType="terms", \
+										level1DocValueType="field", \
+										level2DocValueType="field", \
+										level1Filter = None, \
+										level2Filter = None, \
+										size=0)
+										
+		jsonBucket = self._esClient.aggregate(indexPattern, qDict)
+		aggDict = jsonBucket["aggregations"]
+		failCount, docErrors, otherCount = self._getAggResponseStats(jsonBucket)
+		print("BuildWinlogEventIdModel Aggs errors: failures={}  doc-count-error-bound={}  sum_other_doc_count={}".format(failCount, docErrors, otherCount))
+		
+		#convert the response to something easier to work with, and keys as [host] -> event-id histogram
+		d = dict()
+		for outerBucket in aggDict[bucket1]["buckets"]:
+			host = outerBucket["key"]
+			d.setdefault(host, dict())
+			#convert these innermost buckets to a histogram from the elastic-aggs query json representation
+			hist = { pair["key"]:pair["doc_count"] for pair in outerBucket[bucket2]["buckets"] }
+			d[host][bucket2] = hist
+
+		return d
+		
 	def BuildIpTrafficModel(self, indexPattern="netflow*", ipVersion="all", ipBlacklist=[], ipWhitelist=[]):
 		"""
 		Using only netflow volume data, analyze the traffic patterns of the network, as a directed graph.
@@ -496,10 +538,10 @@ class NetflowModelBuilder(object):
 		
 		return flowModel
 
-def main():
+def test1():
 	servAddr = "http://192.168.0.91:80/elasticsearch"
 	client = ElasticClient(servAddr)
-	builder	= NetflowModelBuilder(client)
+	builder	= ModelBuilder(client)
 	ipVersion = "ipv4"
 	
 	"""
@@ -549,6 +591,26 @@ def main():
 	indexPattern = "netflow-v9-2017*,-netflow-v9-2017.04*" #april indices have failed repeatedly, due to what appears to be differently-index data; may require re-indexing
 	model = builder.BuildNetFlowModel(indexPattern, ipVersion=ipVersion, ipBlacklist=blacklist, ipWhitelist=whitelist)
 	model.Save("pickled_model.pickle")
+	
+def test2():
+	servAddr = "http://192.168.0.91:80/elasticsearch"
+	client = ElasticClient(servAddr)
+	builder	= ModelBuilder(client)
+	indexPattern = "winlogbeat*"
+	model = builder.BuildWinlogEventIdModel(indexPattern)
+	print("Event id model: {}".format(model))
+	
+	for host in model:
+		event_hist = model[host]["event_id"]
+		series = pd.Series(event_hist.values(), index=event_hist.keys())
+		series.sort_values().plot(kind='bar',title="Host {} Event-Id Frequency".format(host))
+		plt.tight_layout()
+		plt.show()
+	
+	
+def main():
+	#test1()
+	test2()
 	
 if __name__ == "__main__":
 	main()
