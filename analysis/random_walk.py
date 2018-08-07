@@ -1,36 +1,38 @@
+from __future__ import print_function
 import networkx as nx
 import numpy as np
 import random as rd
 import sets as st
 from stix2 import TAXIICollectionSource, Filter
 from taxii2client import Collection
+import matplotlib.pyplot as plt
 
 def print_stage(n, state, curr, attack_path, tactic, tech):
-	print "#" + str(n) 
-	print "   Node: "   + str(curr) + "  ---  Path: " + str(attack_path)
-	print "   Tactic: " + str(tactic)
-	print "   Technique" 
-	print "      Id:  "   + str(tech['id']) 
-	print "      Name:  " + str(tech['name']) 
+	print("#" + str(n))
+	print("   Node: "   + str(curr) + "  ---  Path: " + str(attack_path))
+	print("   Tactic: " + str(tactic))
+	print("   Technique")
+	print("	  Id:  "   + str(tech['id']))
+	print("	  Name:  " + str(tech['name']))
 	try:
-		print "      Data Source:  " + str(tech['x_mitre_data_sources']) 
+		print("	  Data Source:  " + str(tech['x_mitre_data_sources']))
 	except KeyError:
-		print "      Data Source: None" 
-	print "  "
+		print("	  Data Source: None")
+	print("")
 
 #Query MITRE ATT&CK API
 def get_technique(tactic):
 	collection = Collection("https://cti-taxii.mitre.org/stix/collections/95ecc380-afe9-11e4-9b6c-751b66dd541e/")
 	tc_source = TAXIICollectionSource(collection)
-    	techs = tc_source.query([
-        	Filter('type', '=', 'attack-pattern'),
-        	Filter('kill_chain_phases.phase_name', '=', tactic)
-    	])
+	techs = tc_source.query([
+		Filter('type', '=', 'attack-pattern'),
+		Filter('kill_chain_phases.phase_name', '=', tactic)
+	])
 
-    	techs_list = [t for t in techs if {
-        	'kill_chain_name' : 'mitre-attack',
-        	'phase_name' : tactic,
-    	} in t.kill_chain_phases]
+	techs_list = [t for t in techs if {
+		'kill_chain_name' : 'mitre-attack',
+		'phase_name' : tactic,
+	} in t.kill_chain_phases]
 	
 	randnum = rd.randint(0, len(techs_list)-1)
 	return techs_list[randnum]
@@ -62,25 +64,28 @@ def create_cyber_graph(C):
 	#C.add_edge("fw1", "fw2")
 	#C.add_edge("ext", "fw1")
 	#C.add_edge("ext", "fw2")
+	
+	nx.draw(C, with_labels = True)
+	plt.show()
 
 def markov_analysis(state):
 
-	#               D,  PE,  LM,  E
+	#			   D,  PE,  LM,  E
 	#v = np.matrix([[1,  0,   0,   0]])
 
 	P = np.matrix([ [.33, .33, .33, 0.0],
-        	        [.33, 0.0, .33, .33],
-                	[.33, .33, 0.0, .33],
-	                [0.0, 0.0, 0.0, 0.0]])
+					[.33, 0.0, .33, .33],
+					[.33, .33, 0.0, .33],
+					[0.0, 0.0, 0.0, 0.0]])
 
-        base=0
-        rand=rd.random()
-        for j in range(4):
-                base = base + np.array(state*P)[0][j]
-                if rand < base:
-                        break
-        state = np.zeros(4)
-        state[j] = 1
+	base=0
+	rand=rd.random()
+	for j in range(4):
+		base = base + np.array(state*P)[0][j]
+		if rand < base:
+			break
+	state = np.zeros(4)
+	state[j] = 1
 	return state
 
 ###############
@@ -106,28 +111,33 @@ avail = set([])
 while n < 50:
 	n=n+1
 	#TODO: Need Initial Access
-        #if state[0]==XYZ: 
+		#if state[0]==XYZ: 
 	#	tactic = "initial-access"
 	#	update_state = 1
-        if state[0]==1: #TODO: technically need to discover both local and remote....
+	
+	#Discovery
+	if state[0]==1: #TODO: technically need to discover both local and remote....
 		tactic = "discovery"
 		disc = disc + 1
 		if disc < 3:
 			update_state = 1
 		else:
 			update_state = 0
-        if state[1]==1: 
+			
+	#Privilige escalation
+	if state[1]==1: 
 		tactic = "privilege-escalation"
 		if priv_esc ==0:
 			update_state = 1
 			priv_esc = 1
 		else: 
 			update_state = 0
-		
-        if state[2]==1: 
+
+	#Lateral movement
+	if state[2]==1: 
 		tactic = "lateral-movement"
 		avail.update(C.adj[curr])
-		avail.difference(attack_path) 
+		avail.difference(attack_path)
 		try:
 			curr = rd.sample( avail, 1 )[0]
 			attack_path.add(curr)
@@ -136,7 +146,9 @@ while n < 50:
 			disc = 0 
 		except ValueError:
 			update_state = 0
-        if state[3]==1: 
+
+	#Execution
+	if state[3]==1: 
 		if attack_path.intersection(exec_nodes):
 			tactic = "execution"
 			update_state = 1
@@ -149,6 +161,7 @@ while n < 50:
 		prv_state = state
 		state = markov_analysis(state)
 		if tactic == "execution":
+			print("EXEC")
 			break
 	else:
 		state = markov_analysis(prv_state)
