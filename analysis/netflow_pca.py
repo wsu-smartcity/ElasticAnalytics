@@ -16,6 +16,9 @@ from netflow_model import NetFlowModel
 import sys
 import numpy as np
 import igraph
+import pandas as pd
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
 
 
 def main():
@@ -26,12 +29,40 @@ def main():
 	#OPTIONAL: convert matrix to log(matrix) form to attempt to linearize the irregular distributions
 	#matrix = np.log(matrix) #does not work yet; write your own and handle zero entries since log(0) = -inf
 	print("Matrix shape: {}".format(matrix.shape))
-	pca = PCA(n_components=8)
+	num_components = 16
+	pca = PCA(n_components=num_components)
 	pca.fit(matrix)
+	Z = pca.transform(matrix)
 
-	print(pca.explained_variance_ratio_)
-	print(pca.singular_values_)
+	print("Components' explained variance ratios:\n\t{}".format(pca.explained_variance_ratio_))
+	print("Singular values:\n\t".format(pca.singular_values_))
+		
+	for i in range(num_components-3):
+		x2 = Z[:,i]
+		y2 = Z[:,i+1]
+		print("{}".format(y2))
+		plt.scatter(x2,y2)
+		plt.show()
+		plt.clf()
+	
+		x3 = Z[:,i]
+		y3 = Z[:,i+1]
+		z3 = Z[:,i+2]
+		fig = plt.figure(1, figsize=(4,3))
+		ax = Axes3D(fig)
+		print("{}".format(y3))
+		ax.scatter(x3,y3,z3)
+		plt.show()
+		plt.clf()
+	
+	
 
+	
+	
+	
+	
+	
+	
 if __name__ == "__main__":
 	main()
 
