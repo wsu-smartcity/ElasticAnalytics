@@ -29,6 +29,7 @@ and the numerical mistakes can completely upset proper probability distributions
 """
 import traceback
 import igraph
+import numpy as np
 
 class NetFlowModel(object):
 	def __init__(self, ipTrafficModel):
@@ -94,6 +95,51 @@ class NetFlowModel(object):
 
 		return isValid
 
+	def _isValidVertexModel(self, vertexModel, modelName):
+		"""
+		Verifies:
+			1) all vertex-name keys in @vertexModel are vertices in the graph
+			2) @modelName is not already in the self._graph.vs vertex models
+		"""
+		isValid = True
+		
+		#get the keys of the current graph
+		vertexNames = self._getGraphVertexNames()
+		
+		missingNames = sorted([name for name in vertexModel.keys() if name not in vertexNames])
+		if any(missingNames):
+			print("ERROR edgeModel keys {}\n ...not in network graph vertices: {}".format(missingNames, vertexNames))
+			isValid = False
+		
+		if modelName in self._graph.vs.attribute_names():
+			print("ERROR vertex model name {} already exists".format(modelName))
+			isValid = False
+	
+		return isValid
+			
+	def MergeVertexModel(self, vertexModel, modelName):
+		"""
+		Method for storing vertex distributions/models on each vertex under @modelName.
+		Here @vertexModel is a dictionary of form: vertexName -> model. So it is a dictionary of 
+		vertex name keys, each of which contains a single model of some arbitrary form.
+		For each vertex in @vertexModel.keys(), the model is stored under @modelName.
+		
+		@vertexModel: A dictionary mapping vertex names to models, e.g., vertex names to event-id histograms from winlog data.
+		@modelName: The name under which to store the models for all vertices
+		"""
+		succeeded = False
+		
+		if not self._isValidVertexModel(vertexModel, modelName):
+			print("ERROR attempted to add invalid vertex model")
+		else:
+			#add model to each individual vertex in @vertexModel
+			for vname in vertexModel.keys():
+				vertex = self._getVertexByName(vname)
+				vertex[modelName] = vertexModel
+			succeeded = True
+			
+		return succeeded
+		
 	def MergeEdgeModel(self, edgeModel, modelName):
 		"""
 		Stores models on the edges of the current network graph, using igraph's ability
@@ -134,7 +180,7 @@ class NetFlowModel(object):
 	def _getHostVertexIndex(self, vname):
 		#Given a hostname (vertex name) return its vertex index in the igraph object, or throw if not found.
 		vId = -1
-		vIds = [v for v in self._graph.vs if v["name"] == vname]
+		vIds = [v.index for v in self._graph.vs if v["name"] == vname]
 		if len(vIds) == 0:
 			#vertex not found, so raise exception
 			raise Exception('ERROR vertex {} not found'.format(vname))

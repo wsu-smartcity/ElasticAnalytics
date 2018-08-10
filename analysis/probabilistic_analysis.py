@@ -2,13 +2,19 @@ import sys
 
 from model_builder import ModelBuilder
 from elastic_client import ElasticClient
+from attack_features import *
 
 class ModelAnalyzer(object):
 	def __init__(self, netflowModel, winlogModel):
 		self._netflowModel = netflowModel
 		self._winlogModel = winlogModel
-
+		self._attackFeatureModel = attack_features.AttackFeaturemodel()
+		
 	def _lateralMovementAnalysis(self):
+		
+	
+		
+	def _lateralMovementAnalysis_Old(self):
 		"""
 		Sandbox code for modeling and exploring the detection of lateral movement instances.
 		Lateral movement is a class of MITRE ATT&CK, where each instance has a specific set of attributes.
@@ -105,12 +111,21 @@ def main():
 				"0.0.0.0",
 				"192.255.255.0"]
 	
+	hostnameConversionTable = {
+								"HP-B53-01": "192.168.0.11",	#scada 
+								"COM600-PC": "192.168.2.10"		#abb substation mgt unit
+							}
+	
 	indexPattern = "netflow*"
 	indexPattern = "netflow-v9-2017*"
 	#uses '-' to exclude specific indices or index-patterns
 	indexPattern = "netflow-v9-2017*,-netflow-v9-2017.04*" #april indices have failed repeatedly, due to what appears to be differently-index data; may require re-indexing
 	netflowModel = builder.BuildNetFlowModel(indexPattern, ipVersion=ipVersion, ipBlacklist=blacklist, ipWhitelist=whitelist)
 	winlogModel = builder.BuildWinlogEventIdModel("winlogbeat*")
+	#just resolves the keys of the winlogmodel (hostnames) to their ip addresses
+	convertedModel = dict([(hostnameConversionTable[host], model) for host, model in winlogModel.items()])
+	netflowModel.MergeVertexModel(convertedModel, "event_id") #store the event model in the nodes; this is redundant, but fine for now
+	netflowModel.Save("netflowModel.pickle")
 	#Build the analyzer
 	analyzer = ModelAnalyzer(netflowModel, winlogModel)
 	analyzer.Analyze()
