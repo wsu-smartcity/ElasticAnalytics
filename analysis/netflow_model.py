@@ -32,18 +32,93 @@ import igraph
 import numpy as np
 
 class NetFlowModel(object):
-	def __init__(self, ipTrafficModel):
+	def __init__(self, ipTrafficModel=None):
 		"""
 		Initializes the NetworkModel with a fully populated igraph.Graph object @ipTrafficModel.
 		Its a tad ugly to pass in the model to this object instead of implementing self-initialization
 		in some form, but its nice to delegate to the NetflowModelBuilder class, simply because it exists
 		and it encapsulates construction logic for these data representations.
 		"""
-		self._graph = ipTrafficModel
-		self._edgeModels = [] # a list of the edge-based models (hisograms, weights, etc) added to the model
+		if ipTrafficModel is not None:
+			self._graph = ipTrafficModel
+			self._graph["edgeModels"] = [] # a list of the edge-based model names (hisograms, weights, etc) added to the model
+		else:
+			pass
 		
 	def _getGraphVertexNames(self):
 		return sorted([v["name"] for v in self._graph.vs])
+
+	def GetEdgeDistributionMatrix(self, distName):
+		"""
+		This is not for edge-distributions per se, but rather for the distributions stored in the edges, such 
+		as the port-number distribution storing a map of port number keys and frequency values.
+		This is a high level wrapper for converting such a categorical edge distribution to a matrix; this matrix is
+		defined in the header for GetCategoricalDistributionsAsNumpyMatrix(), but consists of all the distributions
+		stacked on top one another. So each row in the matrix is one distribution, and thus the matrix has a number 
+		of rows equal to the number of distributions. The columns reflect the number of categories over all distributions.
+		"""
+		if distName not in self._graph["edgeModels"]:
+			print("ERROR, {} not in edge models".format(distName))
+			return None, None
+			
+		dists = self.GetEdgeDistributions(distName).values()
+		matrix, colIndex = self.GetCategoricalDistributionsAsNumpyMatrix(dists)
+		
+		return matrix, colIndex
+				
+	def GetCategoricalDistributionsAsNumpyMatrix(self, dists, dtype=np.float32):
+		"""
+		Accepts @dists, a set of n k-dimensional categorical distributions, and converts each distribution to a numpy 
+		vector. Thus the returned matrix is size n x k, where 'n' is the number of distributions, and k is the
+		number of categories over all distributions.
+		
+		@dists: An iterable of dictionaries describing categorical data, as key=category -> val=frequency.
+		
+		Returns: An (n x k) matrix as described, along with @columnIndex, a dict mapping indices distribution keys
+		(class names) to their columnar indices in the matric.
+		"""
+		colIndex = dict()
+		keyCt = 0
+		
+		#build the columnIndex
+		for dist in dists:
+			for key in dist.keys():
+				#builds the mapping from distribution keys to column indices in the output matrix
+				if key not in colIndex.keys():
+					colIndex[key] = keyCt
+					keyCt += 1
+
+		#build the actual matrix
+		matrix = np.zeros(shape=(len(dists),keyCt), dtype=dtype)
+		for row, dist in enumerate(dists):
+			for key, val in dist.items():
+				col = colIndex[key]
+				#print("{}".format(val))
+				matrix[row,col] = val
+
+		return matrix, colIndex
+	
+	def GetEdgeDistributions(self, distName):
+		"""
+		Returns all of the port# distributions for each direct edge (host1 -> host2),
+		provided they have been built and stored in the model. To retain host-host information,
+		the histograms are returned as a dict (host1,host2) -> port histogram. Returns None
+		if no port models stored yet.
+		
+		@distName: The name of the distribution to fetch, e.g. "port"
+		"""
+		if distName in self._graph.es.attribute_names():
+			hists = {}
+			for edge in self._graph.es:
+				src  = self._graph.vs[edge.source]["name"]
+				dest = self._graph.vs[edge.target]["name"]
+				key = (src,dest)
+				value = edge[distName][distName] #these models necessarily exist, since every netflow has a port number, and every edge indicates at least one flow
+				hists[key] = value
+		else:
+			hists = None
+
+		return hists
 	
 	def Print(self):
 		print("Vertices:")
@@ -56,7 +131,7 @@ class NetFlowModel(object):
 			dest = self._graph.vs[edge.target]["name"]
 			print("  ({}->{})".format(src,dst))
 			
-		print("Edge models: {}".format(self._edgeModels))
+		print("Edge models: {}".format(self._graph["edgeModels"]))
 	
 	def _isValidEdgeModel(self, edgeModel, modelName):
 		"""
@@ -173,7 +248,7 @@ class NetFlowModel(object):
 					print("Adding edge attribute {} failed in MergeEdgeModel() for ({},{})".format(modelName, src, dst))
 					succeeded = False
 				else:
-					self._edgeModels.append(modelName)
+					self._graph["edgeModels"].append(modelName)
 					
 		return succeeded
 
@@ -223,13 +298,13 @@ class NetFlowModel(object):
 				isValid = False
 		
 		#make sure selected models are actually in the edge models
-		if "protocol" in query.keys() and "protocol" not in self._edgeModels:
+		if "protocol" in query.keys() and "protocol" not in self._graph["edgeModels"]:
 			print("ERROR @protocol not in stored edge models of netflow model")
 			isValid = False
-		if "port" in query.keys() and "port" not in self._edgeModels:
+		if "port" in query.keys() and "port" not in self._graph["edgeModels"]:
 			print("ERROR @port not in stored edge models of netflow model")
 			isValid = False
-		if "in_bytes" in query.keys() and "in_bytes" not in self._edgeModels:
+		if "in_bytes" in query.keys() and "in_bytes" not in self._graph["edgeModels"]:
 			print("ERROR @in_bytes not in stored edge models of netflow model")
 			isValid = False
 			
@@ -373,7 +448,7 @@ class NetFlowModel(object):
 		Returns a port histogram across the entire network, of type port# -> frequency.
 		One can then easily query 
 		"""
-		if "port" not in self._edgeModels:
+		if "port" not in self._graph["edgeModels"]:
 			print("ERROR 'port' not in edgeModels, cannot query port distributions")
 			return -1.0
 			
@@ -487,8 +562,9 @@ class NetFlowModel(object):
 			savePath = fpath+".pickle"
 		else:
 			savePath = fpath
-		self._graph.write_pickle(savePath)
+		self._graph.write_pickle(fpath)
 
+	
 	def Read(self, fpath):
 		self._graph = igraph.Graph.Read_Pickle(fpath)
 		

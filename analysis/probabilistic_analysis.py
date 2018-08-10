@@ -8,11 +8,7 @@ class ModelAnalyzer(object):
 	def __init__(self, netflowModel, winlogModel):
 		self._netflowModel = netflowModel
 		self._winlogModel = winlogModel
-		self._attackFeatureModel = attack_features.AttackFeaturemodel()
-		
-	def _lateralMovementAnalysis(self):
-		
-	
+		#self._attackFeatureModel = attack_features.AttackFeaturemodel()
 		
 	def _lateralMovementAnalysis_Old(self):
 		"""
@@ -82,7 +78,7 @@ class ModelAnalyzer(object):
 		ways end up being useful or apparently successful.
 		"""
 		
-		self._lateralMovementAnalysis()
+		self._lateralMovementAnalysis_Old()
 		
 		
 		
