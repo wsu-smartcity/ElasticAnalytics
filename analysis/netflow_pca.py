@@ -6,7 +6,7 @@ all hosts, which is tested here. This is risky since in almost every case there 
 edges (h * (h-1), for a directed graph with 'h' hosts) than port numbers (65k). OTOH, we expect
 a lot of regularity in terms of certain ports being used (e.g., port 80 for http traffic).
 
-This is purely experimental/exploratory. In fact, it should not be included a work without 
+This is purely experimental/exploratory, and should not be included a work without 
 a pretty rigorous justification for analyzing PC's for a matrix with many fewer rows than
 columns.
 """
@@ -20,19 +20,31 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 
+def matrixLog(A, zeroValue=0.0):
+	"""
+	Takes the natural-log of a matrix, setting any 0 values to @zeroValue
+	"""
+	for row in range(A.shape[0]):
+		for col in range(A.shape[1]):
+			if A[row,col] > 0:
+				A[row,col] = np.log(A[row,col])
+			else:
+				A[row,col] = zeroValue
+				
+	return A
 
 def main():
 	netflowModel = NetFlowModel()
 	netflowModel.Read("netflowModel.pickle")
 	#Get the port model as a dictionary of (src-host,dst-host) -> port_histogram
-	matrix, colIndex = netflowModel.GetEdgeDistributionMatrix("port")
+	X, colIndex = netflowModel.GetEdgeDistributionMatrix("port")
 	#OPTIONAL: convert matrix to log(matrix) form to attempt to linearize the irregular distributions
-	#matrix = np.log(matrix) #does not work yet; write your own and handle zero entries since log(0) = -inf
-	print("Matrix shape: {}".format(matrix.shape))
+	#matrix = matrixLog(matrix)
+	print("Matrix shape: {}".format(X.shape))
 	num_components = 16
 	pca = PCA(n_components=num_components)
-	pca.fit(matrix)
-	Z = pca.transform(matrix)
+	pca.fit(X)
+	Z = pca.transform(X)
 
 	print("Components' explained variance ratios:\n\t{}".format(pca.explained_variance_ratio_))
 	print("Singular values:\n\t".format(pca.singular_values_))
@@ -56,8 +68,8 @@ def main():
 		plt.clf()
 	
 	
-
-	
+	#Run k-means on transformed data after PCA.
+	#kmeans = KMeans(n_clusters=2, random_state=0).fit(Z)
 	
 	
 	

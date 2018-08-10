@@ -80,7 +80,21 @@ class ModelAnalyzer(object):
 		
 		self._lateralMovementAnalysis_Old()
 		
+	def AssignTacticProbabilities(self):
+		"""
+		For each node/host in the network, assign a model of the combined probability of
+		each ATT&CK tactic given our dataset, but only including execution, privilege escalation, lateral movement,
+		and discovery. Host level events (winlog ids) are not relational an thus stored under a single
+		table, whereas inter-host events (port flows) are relational and are broken out by dest host.
 		
+		But each host can just have a simple table that incorporates all of this information into a single metric.
+		
+			Host ATT&CK tactic table:
+				lateral_movement		--> probability
+				execution 				--> probability
+				discovery				--> probability
+				privilege_escalation	--> probability
+		"""
 		
 		
 def main():
@@ -125,7 +139,7 @@ def main():
 	#Build the analyzer
 	analyzer = ModelAnalyzer(netflowModel, winlogModel)
 	analyzer.Analyze()
-		
+	analyzer.AnalyzeAttackFeatures()
 		
 if __name__ == "__main__":
 	main()

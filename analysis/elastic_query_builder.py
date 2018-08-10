@@ -100,6 +100,21 @@ class QueryBuilder(object):
 		print(json.dumps(aggDict2, indent=2))
 		print(str(aggDict1==aggDict2))
 		
+	@staticmethod
+	def BuildNetworkScanDetectionQuery():
+		"""
+		There are likely many threshold-based queries to detect network scans, especially given adversary countermeasures:
+			*non-contiguous ports scanned: adversary might not scan ports sequentially; could skip ports, e.g., scan even ports
+			*short-range of ports scanned: adversary may scan only a narrow range of ports
+			*disjoint time scans: adversary may scan and come back at a later time for further scan, to evade detection of sudden burst of incrementing port activity
+		
+		Given these features, one can prepare a query implementing any of the following
+			1) Canonical: query for contiguous sequence of k ports scanned by a specific source (src ip)
+			2) Mathematical: Query for any specific source (src ip) scanning greater than k ports in some
+			time span.
+		"""
+			#TODO
+			return None
 		
 	def BuildNestedAggsQuery(self, bucketList, size=0, filterQuery={"match_all":{}}):
 		"""
