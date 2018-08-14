@@ -66,7 +66,17 @@ class NetFlowModel(object):
 		
 		return matrix, colIndex
 			
-	def InitializeMitreTacticModel(self, featureModel):
+	def HasEventModel(self):
+		#Returns whether or not the winlog event-id distribution has been stored; good to check before
+		#deriving analytics, which will be incomplete if not winlog data has been stored in the model.
+		return "event_id" in self._graph.vs.attribute_names()
+		
+	def HasPortModel(self):
+		return "port" in self._graph.es.attribute_names()
+	def HasProtocolModel(self):
+		return "protocol" in self._graph.es.attribute_names()
+			
+	def InitializeMitreHostTacticModel(self, featureModel):
 		"""
 		Given an @featureModel, an AttackFeatureModel object storing MITRE ATT&CK features, this
 		assigns a tactic probability to every node (host) in the network. The only tactics covered so
@@ -90,12 +100,18 @@ class NetFlowModel(object):
 		#maps each tactic name (e.g. 'lateral_movement') to its probability.
 		for v in self._graph.vs:
 			v[modelName] = dict()
-		
+
 		lm = "lateral_movement"
 		exe = "execution"
 		disc = "discovery"
 		pe = "privilege_escalation"
-		
+
+		#A few check to make sure the model has been initialized with data estimates for all of the features for attack detection (port usage, winlog event id's, etc)
+		if not self.HasEventModel():
+			print("WARNING initializing MITRE host tactic model without an initialized winlog host-event model; estimates of event-ids will be incomplete.")
+		if not self.HasPortModel():
+			print("WARNING initializing MITRE host tactic model without an initialized port edge-model; estimates of port-based events will be incomplete.")
+
 		#assign lateral movement tactic probability to all nodes
 		for v in self._graph.vs:
 			attackTable = v[modelName]
@@ -104,19 +120,106 @@ class NetFlowModel(object):
 			attackTable["discovery"] = self._simpleTacticProb(v, featureModel, "discovery")
 			attackTable["privilege_escalation"] = self._simpleTacticProb(v, featureModel, "privilege_escalation")
 
-
-	def _simpleTacticProb(self, featureModel, tactic):
-		#@tactic: One of "lateral_movement", "discovery", "execution", or "privilege_escalation".
+	def _getVertexEventProb(self, vertex, eventIds):
+		#@eventIds: A list or iterable of winlgo event ids. The sum probability of all these will be returned.
+		if not self.HasEventModel():
+			print("ERROR called _getVertexEventProb without an initialized event-id model")
+			return 0.0
+		
+		eventModel = vertex["event_id"]
+		print("{}".format(eventModel))
+		#vertex' event_id model is None if it has no data, as for many ied's
+		if eventModel is None:
+			print("Log: {} not in eventModel".format(vertex["name"]))
+			return 0.0
+			
+		#gotta drill in a little more to get the actual event distribution
+		eventModel = eventModel[vertex["name"]]["event_id"]
 		prob = 0.0
+		z = float(sum([val for val in eventModel.values()]))
+		for event in eventIds:
+			if event in vertex["event_id"].keys():
+				prob += vertex["event_id"][event]
+		prob /= z
+		
+		return prob
+
+	def _getVertexPortEventProb(self, vertex, ports, arcType="in", aggProbs=True):
+		"""
+		@vertex: An igraph vertex object from the netflow model
+		@ports: A list of ports whose sum probability will be calculated
+		@arcType: One of "in", "out", or "undirected". These are defined as follows:
+			if "in", then only port events will only be evaluated from this node to other nodes
+			if "out", then only inbound traffic to this node will be evaluated 
+			if "undirected", then all in/out traffic will be evaluated.
+			These options can lead to completely different estimates and views of vulnerability,
+			depending on the desired view: outlinks, inlinks, or undirected models. "In" reflects
+			the view of this vertex being attacked, whereas "out" views a node as being compromised
+			and attempting to compromise others.
+			
+		@aggProb: Whether or not to aggregate the probability of each port over multiple edge-distributions.
+		If true, then the edge distributions are aggregated together before calculating the probability of a port.
+		If false, then a port's probability is the sum of individual probabilities from each edge.
+		Example: Say you have these two edge distributions for port 80 and 22: [{80:5000, 22:1}, {80:5000, 22:5000}]
+			If aggProbs=true, then p(port=22) = 5001 / 15001
+			if aggProbs=false, then p(port=22) = 1 / 5001 + 5000 / 10000
+		"""
+		if arcType not in {"in", "out", "undirected"}:
+			print("ERROR arcType {} invalid in _getVertexPortEventProb()".format(arcType))
+			return 0.0
+
+		#aggregate the edges over which to evaluate port activity
+		if arcType == "in":
+			edges = self._graph.es.select(_source=vertex.index)
+		elif arcType == "out":
+			edges = self._graph.es.select(_target=vertex.index)
+		elif arcType == "undirected":
+			edges = [edge for edge in self._graph.es.select(_source=vertex.index)]
+			edges += [edge for edge in self._graph.es.select(_target=vertex.index)]
+
+		pPorts = 0.0
+		z = 0.0
+		if aggProbs:
+			for edge in edges:
+				portModel = edge["port"]["port"]
+				z += float(sum([val for val in portModel.values()]))
+				pPorts += float(sum([portModel[port] for port in ports if port in portModel]))
+			if z > 0:
+				pPorts = pPorts / z
+			else:
+				print("prob/Z {} {}".format(pPorts, z))
+		else:
+			for edge in edges:
+				z = float(sum([val for val in edge["port"].values()]))
+				pPort_this_edge = float(sum([edge["port"][port] for port in ports]))
+				if z > 0:
+					pPorts += (pPort_this_edge / z)
+				else:
+					print("prob/Z {} {}".format(pPorts, z))
+
+		return pPorts
+
+	def _simpleTacticProb(self, vertex, featureModel, tactic):
+		"""
+		@vertex: An igraph vertex object in the graph
+		@featureModel: An AttackFeatureModel object
+		@tactic: One of "lateral_movement", "discovery", "execution", or "privilege_escalation".
+		"""
+		ports = []
+		eventIds = []
+		#first union all of the unique features to analyze, since there is significant overlap
 		for technique in featureModel.AttackTable[tactic]:
-			#get the technique probability by summing over all its recognized ports
-			portProb = sum([ port  for port in technique.Ports ])
-			#get the technique probability summed over event-ids
-			eventProb = sum([eventId for eventId in technique.WinlogEvents])
-			#bro-events, not implemented
-			#broProb = sum([eventId for eventId in technique.broEvents])
-			#es-query; not yet implemented
-			#esProb = sum([eventId for eventId in technique.])
+			ports += technique.Ports
+			eventIds += technique.WinlogEvents
+		#uniquify the events and ports
+		ports = list(set(ports))
+		eventIds = list(set(eventIds))
+		
+		#with unique set of ports and event-ids, calculate the attack probability as the sum of all these events
+		prob = self._getVertexEventProb(vertex, eventIds)
+		prob += self._getVertexPortEventProb(vertex, ports, arcType="in", aggProbs=True)
+		
+		return prob
 
 	def GetCategoricalDistributionsAsNumpyMatrix(self, dists, dtype=np.float32):
 		"""

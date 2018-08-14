@@ -90,17 +90,15 @@ class ModelAnalyzer(object):
 		But each host can just have a simple table that incorporates all of this information into a single metric.
 		
 			Host ATT&CK tactic table:
-				lateral_movement		--> probability
-				execution 				--> probability
-				discovery				--> probability
-				privilege_escalation	--> probability
+				lateral_movement		--> sum probability over all l.m. techniques
+				execution 				--> sum probability over all exe techniques
+				discovery				--> sum probability over all discovery techniques
+				privilege_escalation	--> sum probability over all p.e. techniques
 		"""
 		
 		featureModel = AttackFeatureModel()
-		self._netflowModel.InitializeMitreTacticModel(featureModel)
-		
-		
-		
+		self._netflowModel.InitializeMitreHostTacticModel(featureModel)
+		"""
 		tactics = ["lateral_movement", "execution", "discovery", "privilege_escalation"]
 		
 		for v in self._netflowModel.Vertices:
@@ -112,7 +110,7 @@ class ModelAnalyzer(object):
 			#model discovery tactic probabilities on this host
 			
 			#model privilege_escalation probabilities on this host
-				
+		"""
 		
 		
 		
@@ -160,7 +158,7 @@ def main():
 	#Build the analyzer
 	analyzer = ModelAnalyzer(netflowModel, winlogModel)
 	#analyzer.Analyze()
-	analyzer.AssignTacticProbabilities()
+	analyzer.AssignMitreTacticProbabilities()
 		
 if __name__ == "__main__":
 	main()

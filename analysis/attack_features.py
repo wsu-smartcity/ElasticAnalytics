@@ -107,7 +107,7 @@ class AttackFeatureModel(object):
 		#Expose tactics through this table
 		self.AttackTable = dict()
 		self.AttackTable["lateral_movement"] = self.Lateral_Movement_Techniques
-		self.AttackTable["execution"] = self.Execution
+		self.AttackTable["execution"] = self.Execution_Techniques
 		self.AttackTable["privilege_escalation"] = self.Privilege_Escalation_Techniques
 		self.AttackTable["discovery"] = self.Discovery_Techniques
 
