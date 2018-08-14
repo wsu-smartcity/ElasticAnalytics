@@ -2,8 +2,8 @@
 A single manually-defined database of technique attack features, per ATT&CK tactic.
 Hence the dependence is tactic -> technique -> features.
 
-Rather than being stored, the features could be shared/automated in some way using stix-like
-behavioral analytics or unfetter.
+Rather than being manually compiled and stored, the features could be shared/automated
+in some way using stix-like behavioral analytics or unfetter.
 """
 
 #TODO: Seems like an indicator of poor code factoring to bring query_builder into here to construct detection-feature queries; and only currently used for network-scan-detection query
@@ -83,7 +83,7 @@ class AttackFeatureModel(object):
 									self.Third_Party_Software,
 									self.Windows_Admin_Shares,
 									self.Windows_Remote_Management ]
-
+		#Store discovery techniques as a list
 		self.Discovery_Techniques = [
 									self.Network_Service_Scanning,
 									self.Network_Share_Discovery,
@@ -91,7 +91,7 @@ class AttackFeatureModel(object):
 									self.Security_Software_discovery ]
 									
 		self.Execution_Techniques = []
-		
+		#Store privilege escalation techniques as a list
 		self.Privilege_Escalation_Techniques = [
 									self.Accessibility_Features,
 									self.App_Cert_Dll,
@@ -103,8 +103,7 @@ class AttackFeatureModel(object):
 									self.Sid_History_Injection,
 									self.Service_Registry_Perms_Weakness,
 									self.Valid_Accounts ]
-		
-		
+
 		#Expose tactics through this table
 		self.AttackTable = dict()
 		self.AttackTable["lateral_movement"] = self.Lateral_Movement_Techniques

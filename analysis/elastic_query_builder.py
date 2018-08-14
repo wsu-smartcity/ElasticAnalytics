@@ -103,18 +103,36 @@ class QueryBuilder(object):
 	@staticmethod
 	def BuildNetworkScanDetectionQuery():
 		"""
-		There are likely many threshold-based queries to detect network scans, especially given adversary countermeasures:
+		There are likely many threshold-based queries to detect network scans, especially given nmap-detection countermeasures:
 			*non-contiguous ports scanned: adversary might not scan ports sequentially; could skip ports, e.g., scan even ports
 			*short-range of ports scanned: adversary may scan only a narrow range of ports
 			*disjoint time scans: adversary may scan and come back at a later time for further scan, to evade detection of sudden burst of incrementing port activity
-		
+			*others?
+			
 		Given these features, one can prepare a query implementing any of the following
 			1) Canonical: query for contiguous sequence of k ports scanned by a specific source (src ip)
 			2) Mathematical: Query for any specific source (src ip) scanning greater than k ports in some
 			time span.
 		"""
-			#TODO
-			return None
+		#TODO
+		return None
+		
+	@staticmethod
+	def BuildOsFingerprintingQuery():
+		"""
+		This could be implemented using a well-structured query to detect os-fingerprinting indicators,
+		which are documented online.
+		"""
+		return None
+		
+	@staticmethod
+	def BuildFailedLoginQuery():
+		"""
+		This seems like another example of low-hanging fruit: detect failedl login attempts,
+		indicating things like rdp attacks and pass-the-hash events part of
+		discovery or lateral movement techniques. See windows event 4625.
+		"""
+		return None
 		
 	def BuildNestedAggsQuery(self, bucketList, size=0, filterQuery={"match_all":{}}):
 		"""
@@ -128,8 +146,8 @@ class QueryBuilder(object):
 		@size: How many docs to return; will nearly always be 0
 		@filterQuery: The outermost query to execute before bucketing; elastic defaults to querying all docs, as does the default param here.
 		"""
-
 		nestedDict = {
+
 			"size": size,
 			"query":{
 				"match_all": {}

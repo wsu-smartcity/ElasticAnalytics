@@ -62,7 +62,7 @@ class ModelAnalyzer(object):
 				pEvent += (float(hist[eventId]) / z)
 		
 		return pEvent
-		
+
 	def _getEventUnionProbability(self, eventIds):
 		"""
 		The winlog event-id model is a set of per-host multinomial distributions over event-ids:
@@ -80,7 +80,7 @@ class ModelAnalyzer(object):
 		
 		self._lateralMovementAnalysis_Old()
 		
-	def AssignTacticProbabilities(self):
+	def AssignMitreTacticProbabilities(self):
 		"""
 		For each node/host in the network, assign a model of the combined probability of
 		each ATT&CK tactic given our dataset, but only including execution, privilege escalation, lateral movement,
@@ -95,6 +95,27 @@ class ModelAnalyzer(object):
 				discovery				--> probability
 				privilege_escalation	--> probability
 		"""
+		
+		featureModel = AttackFeatureModel()
+		self._netflowModel.InitializeMitreTacticModel(featureModel)
+		
+		
+		
+		tactics = ["lateral_movement", "execution", "discovery", "privilege_escalation"]
+		
+		for v in self._netflowModel.Vertices:
+			#model lateral_movement tactic probabilities on this host
+			
+			#model execution tactic probabilities on this host
+			
+			
+			#model discovery tactic probabilities on this host
+			
+			#model privilege_escalation probabilities on this host
+				
+		
+		
+		
 		
 		
 def main():
@@ -138,8 +159,8 @@ def main():
 	netflowModel.Save("netflowModel.pickle")
 	#Build the analyzer
 	analyzer = ModelAnalyzer(netflowModel, winlogModel)
-	analyzer.Analyze()
-	analyzer.AnalyzeAttackFeatures()
+	#analyzer.Analyze()
+	analyzer.AssignTacticProbabilities()
 		
 if __name__ == "__main__":
 	main()

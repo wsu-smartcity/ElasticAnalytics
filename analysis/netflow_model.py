@@ -41,7 +41,7 @@ class NetFlowModel(object):
 		"""
 		if ipTrafficModel is not None:
 			self._graph = ipTrafficModel
-			self._graph["edgeModels"] = [] # a list of the edge-based model names (hisograms, weights, etc) added to the model
+			self._graph["edgeModels"] = [] # a list of the edge-based model names (histograms, weights, etc) added to the model
 		else:
 			pass
 		
@@ -51,7 +51,7 @@ class NetFlowModel(object):
 	def GetEdgeDistributionMatrix(self, distName):
 		"""
 		This is not for edge-distributions per se, but rather for the distributions stored in the edges, such 
-		as the port-number distribution storing a map of port number keys and frequency values.
+		as the port-number distribution storing a map of port number keys to frequency values (number of netflows for that port#).
 		This is a high level wrapper for converting such a categorical edge distribution to a matrix; this matrix is
 		defined in the header for GetCategoricalDistributionsAsNumpyMatrix(), but consists of all the distributions
 		stacked on top one another. So each row in the matrix is one distribution, and thus the matrix has a number 
@@ -60,12 +60,64 @@ class NetFlowModel(object):
 		if distName not in self._graph["edgeModels"]:
 			print("ERROR, {} not in edge models".format(distName))
 			return None, None
-			
+
 		dists = self.GetEdgeDistributions(distName).values()
 		matrix, colIndex = self.GetCategoricalDistributionsAsNumpyMatrix(dists)
 		
 		return matrix, colIndex
-				
+			
+	def InitializeMitreTacticModel(self, featureModel):
+		"""
+		Given an @featureModel, an AttackFeatureModel object storing MITRE ATT&CK features, this
+		assigns a tactic probability to every node (host) in the network. The only tactics covered so
+		far are execution, privilege escalation, lateral movement, and discovery. Each tactic is assigned
+		a probability based on the conditional probability of observing any of that tactic's features at
+		that particular host. "Any of" implies the probability of each feature (which are independent) can
+		be just added together, hence the probability of a tactic is just the sum of individual techniques.
+		We could come up with more advanced definitions, but this is sufficient for descriptive stats for now,
+		in terms of rudimentary queries, "given this tactic, what is its probability in the network?"
+		
+		TODO: This is an area with a lot of code smell; not sure which objects should run probability calculation
+		logic and so forth, especially if techniques are ever analyzed on the basis of custom elastic queries. An 
+		example would be the nmap techniques or os-fingerprinting within the discovery tactic; detecting these
+		techniques might involve implementing custom elastic queries to detect port activity characteristic of
+		mapping. But querying elastic means the netflow model now requires knowledge of the elastic instance... which
+		breaks a lot of encapsulation.
+		"""
+		
+		modelName = "ATT&CK_Model"
+		#Initialize a model at each vertex; each host/vertex stores an 'ATT&CK_Model' table, which in turn
+		#maps each tactic name (e.g. 'lateral_movement') to its probability.
+		for v in self._graph.vs:
+			v[modelName] = dict()
+		
+		lm = "lateral_movement"
+		exe = "execution"
+		disc = "discovery"
+		pe = "privilege_escalation"
+		
+		#assign lateral movement tactic probability to all nodes
+		for v in self._graph.vs:
+			attackTable = v[modelName]
+			attackTable["lateral_movement"] = self._simpleTacticProb(v, featureModel, "lateral_movement")
+			attackTable["execution"] = self._simpleTacticProb(v, featureModel, "execution")
+			attackTable["discovery"] = self._simpleTacticProb(v, featureModel, "discovery")
+			attackTable["privilege_escalation"] = self._simpleTacticProb(v, featureModel, "privilege_escalation")
+
+
+	def _simpleTacticProb(self, featureModel, tactic):
+		#@tactic: One of "lateral_movement", "discovery", "execution", or "privilege_escalation".
+		prob = 0.0
+		for technique in featureModel.AttackTable[tactic]:
+			#get the technique probability by summing over all its recognized ports
+			portProb = sum([ port  for port in technique.Ports ])
+			#get the technique probability summed over event-ids
+			eventProb = sum([eventId for eventId in technique.WinlogEvents])
+			#bro-events, not implemented
+			#broProb = sum([eventId for eventId in technique.broEvents])
+			#es-query; not yet implemented
+			#esProb = sum([eventId for eventId in technique.])
+
 	def GetCategoricalDistributionsAsNumpyMatrix(self, dists, dtype=np.float32):
 		"""
 		Accepts @dists, a set of n k-dimensional categorical distributions, and converts each distribution to a numpy 
@@ -103,7 +155,7 @@ class NetFlowModel(object):
 		Returns all of the port# distributions for each direct edge (host1 -> host2),
 		provided they have been built and stored in the model. To retain host-host information,
 		the histograms are returned as a dict (host1,host2) -> port histogram. Returns None
-		if no port models stored yet.
+		if no port models stored under @distName.
 		
 		@distName: The name of the distribution to fetch, e.g. "port"
 		"""
@@ -195,15 +247,16 @@ class NetFlowModel(object):
 	def MergeVertexModel(self, vertexModel, modelName):
 		"""
 		Method for storing vertex distributions/models on each vertex under @modelName.
-		Here @vertexModel is a dictionary of form: vertexName -> model. So it is a dictionary of 
+		Here @vertexModel is a dictionary of form: vertexName -> model. So it is a dictionary of
 		vertex name keys, each of which contains a single model of some arbitrary form.
 		For each vertex in @vertexModel.keys(), the model is stored under @modelName.
 		
-		@vertexModel: A dictionary mapping vertex names to models, e.g., vertex names to event-id histograms from winlog data.
-		@modelName: The name under which to store the models for all vertices
+		@vertexModel: A dictionary mapping vertex names to models, e.g., vertex names to event-id
+					  histograms from winlog data.
+		@modelName: The name under which to store the models for all vertices.
 		"""
 		succeeded = False
-		
+
 		if not self._isValidVertexModel(vertexModel, modelName):
 			print("ERROR attempted to add invalid vertex model")
 		else:
@@ -567,6 +620,3 @@ class NetFlowModel(object):
 	
 	def Read(self, fpath):
 		self._graph = igraph.Graph.Read_Pickle(fpath)
-		
-		
-		
