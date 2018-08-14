@@ -154,11 +154,12 @@ def main():
 	#just resolves the keys of the winlogmodel (hostnames) to their ip addresses
 	convertedModel = dict([(hostnameConversionTable[host], model) for host, model in winlogModel.items()])
 	netflowModel.MergeVertexModel(convertedModel, "event_id") #store the event model in the nodes; this is redundant, but fine for now
-	netflowModel.Save("netflowModel.pickle")
 	#Build the analyzer
 	analyzer = ModelAnalyzer(netflowModel, winlogModel)
 	#analyzer.Analyze()
 	analyzer.AssignMitreTacticProbabilities()
+	netflowModel.Save("netflowModel.pickle")
+	netflowModel.PrintAttackModels()
 		
 if __name__ == "__main__":
 	main()

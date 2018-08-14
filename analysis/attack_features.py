@@ -52,7 +52,7 @@ class AttackFeatureModel(object):
 	Network_Service_Scanning = Technique(esQuery=QueryBuilder.BuildNetworkScanDetectionQuery())
 	Network_Share_Discovery = Technique(portList=[445,139], broEvents=[], winlogEvents=[])
 	Query_Registry = Technique(winlogEvents=[4656])
-	Security_Software_discovery = Technique(winlogEvents=[4656])
+	Security_Software_Discovery = Technique(winlogEvents=[4656])
 	#EXECUTION (all execution events are null)
 	#PRIVILEGE ESCALATION (all of these are intra-host)
 	Accessibility_Features = Technique(portList=[4657])
@@ -88,7 +88,7 @@ class AttackFeatureModel(object):
 									self.Network_Service_Scanning,
 									self.Network_Share_Discovery,
 									self.Query_Registry,
-									self.Security_Software_discovery ]
+									self.Security_Software_Discovery ]
 									
 		self.Execution_Techniques = []
 		#Store privilege escalation techniques as a list

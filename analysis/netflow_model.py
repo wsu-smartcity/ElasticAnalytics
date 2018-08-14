@@ -42,8 +42,8 @@ class NetFlowModel(object):
 		if ipTrafficModel is not None:
 			self._graph = ipTrafficModel
 			self._graph["edgeModels"] = [] # a list of the edge-based model names (histograms, weights, etc) added to the model
-		else:
-			pass
+		
+		self._mitreModelName = "ATT&CK_Model"
 		
 	def _getGraphVertexNames(self):
 		return sorted([v["name"] for v in self._graph.vs])
@@ -75,6 +75,8 @@ class NetFlowModel(object):
 		return "port" in self._graph.es.attribute_names()
 	def HasProtocolModel(self):
 		return "protocol" in self._graph.es.attribute_names()
+	def HasMitreAttackModel(self):
+		return self._mitreModelName in self._graph.vs.attribute_names()
 			
 	def InitializeMitreHostTacticModel(self, featureModel):
 		"""
@@ -95,7 +97,7 @@ class NetFlowModel(object):
 		breaks a lot of encapsulation.
 		"""
 		
-		modelName = "ATT&CK_Model"
+		modelName = self._mitreModelName
 		#Initialize a model at each vertex; each host/vertex stores an 'ATT&CK_Model' table, which in turn
 		#maps each tactic name (e.g. 'lateral_movement') to its probability.
 		for v in self._graph.vs:
@@ -120,17 +122,31 @@ class NetFlowModel(object):
 			attackTable["discovery"] = self._simpleTacticProb(v, featureModel, "discovery")
 			attackTable["privilege_escalation"] = self._simpleTacticProb(v, featureModel, "privilege_escalation")
 
+	def PrintAttackModels(self):
+		"""
+		Print ATT&CK table data at each node, in which we stored tactic probabilities at each node.
+		"""
+		if not self.HasMitreAttackModel():
+			print("ERROR not ATT&CK model initialized in model")
+			return
+			
+		for v in self._graph.vs:
+			model = v[self._mitreModelName]
+			print("{} model: {}".format(v["name"], model))
+			
+
 	def _getVertexEventProb(self, vertex, eventIds):
-		#@eventIds: A list or iterable of winlgo event ids. The sum probability of all these will be returned.
+		#@vertex: An igraph vertex object representing a host in the graph
+		#@eventIds: A list or iterable of winlog event ids. The sum probability of all these will be returned.
 		if not self.HasEventModel():
 			print("ERROR called _getVertexEventProb without an initialized event-id model")
 			return 0.0
 		
 		eventModel = vertex["event_id"]
-		print("{}".format(eventModel))
+		#print("{}".format(eventModel))
 		#vertex' event_id model is None if it has no data, as for many ied's
 		if eventModel is None:
-			print("Log: {} not in eventModel".format(vertex["name"]))
+			print("warning: {} not in eventModel".format(vertex["name"]))
 			return 0.0
 			
 		#gotta drill in a little more to get the actual event distribution
@@ -138,8 +154,10 @@ class NetFlowModel(object):
 		prob = 0.0
 		z = float(sum([val for val in eventModel.values()]))
 		for event in eventIds:
-			if event in vertex["event_id"].keys():
-				prob += vertex["event_id"][event]
+			if event in eventModel.keys():
+				prob += eventModel[event]
+			else:
+				print("WARN no event {} for host {}".format(event, vertex["name"]))
 		prob /= z
 		
 		return prob
@@ -161,7 +179,7 @@ class NetFlowModel(object):
 		If true, then the edge distributions are aggregated together before calculating the probability of a port.
 		If false, then a port's probability is the sum of individual probabilities from each edge.
 		Example: Say you have these two edge distributions for port 80 and 22: [{80:5000, 22:1}, {80:5000, 22:5000}]
-			If aggProbs=true, then p(port=22) = 5001 / 15001
+			If aggProbs=true, then p(port=22) = (5000+1) / 15001
 			if aggProbs=false, then p(port=22) = 1 / 5001 + 5000 / 10000
 		"""
 		if arcType not in {"in", "out", "undirected"}:
@@ -190,8 +208,9 @@ class NetFlowModel(object):
 				print("prob/Z {} {}".format(pPorts, z))
 		else:
 			for edge in edges:
-				z = float(sum([val for val in edge["port"].values()]))
-				pPort_this_edge = float(sum([edge["port"][port] for port in ports]))
+				portModel = edge["port"]["port"]
+				z = float(sum([val for val in portModel.values()]))
+				pPort_this_edge = float(sum([portModel[port] for port in ports if port in portModel]))
 				if z > 0:
 					pPorts += (pPort_this_edge / z)
 				else:
@@ -217,7 +236,7 @@ class NetFlowModel(object):
 		
 		#with unique set of ports and event-ids, calculate the attack probability as the sum of all these events
 		prob = self._getVertexEventProb(vertex, eventIds)
-		prob += self._getVertexPortEventProb(vertex, ports, arcType="in", aggProbs=True)
+		prob += self._getVertexPortEventProb(vertex, ports, arcType="undirected", aggProbs=True)
 		
 		return prob
 
