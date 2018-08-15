@@ -694,6 +694,7 @@ class NetFlowModel(object):
 				visual_style["bbox"] = (1100, 1100)
 				visual_style["margin"] = 50
 				graphPlot = igraph.plot(self._graph, **visual_style)
+				graphPlot.save("network.png")
 			except:
 				traceback.print_exc()
 		else:
