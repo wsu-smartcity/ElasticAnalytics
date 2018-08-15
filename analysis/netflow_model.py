@@ -83,21 +83,30 @@ class NetFlowModel(object):
 		Given an @featureModel, an AttackFeatureModel object storing MITRE ATT&CK features, this
 		assigns a tactic probability to every node (host) in the network. The only tactics covered so
 		far are execution, privilege escalation, lateral movement, and discovery. Each tactic is assigned
-		a probability based on the conditional probability of observing any of that tactic's features at
+		a probability based on the conditional probability of observing any of its techniques' features at
 		that particular host. "Any of" implies the probability of each feature (which are independent) can
-		be just added together, hence the probability of a tactic is just the sum of individual techniques.
+		be just added together, hence the probability of a tactic can be defined as the sum of individual techniques.
 		We could come up with more advanced definitions, but this is sufficient for descriptive stats for now,
-		in terms of rudimentary queries, "given this tactic, what is its probability in the network?"
+		in terms of rudimentary queries, like "given this tactic, what is the sum probability of all of its features in
+		normal network data?"
 		
 		TODO: This is an area with a lot of code smell; not sure which objects should run probability calculation
-		logic and so forth, especially if techniques are ever analyzed on the basis of custom elastic queries. An 
+		logic and so forth, especially if techniques are ever analyzed on the basis of custom elastic queries. An
 		example would be the nmap techniques or os-fingerprinting within the discovery tactic; detecting these
 		techniques might involve implementing custom elastic queries to detect port activity characteristic of
 		mapping. But querying elastic means the netflow model now requires knowledge of the elastic instance... which
 		breaks a lot of encapsulation.
-		"""
 		
+		Notes: there are multiple parameters possible in this analysis in terms of how we view/define various
+		probability distributions. For example, @edgeView defines whether or not to score relational flow-based
+		distributions at each node by one of {"in","out","undirected"}, which indicates scoring incident edges, out-going edges,
+		or undirected (include both in- and out-going edges). This choice is thus a 'parameter' of the analysis,
+		since it determines different probability values, and also it embeds an interpretation of how to view/score
+		malicious activity.
+		"""
 		modelName = self._mitreModelName
+		#@edgeView may be one of {"in","out","undirected"}, indicating which edges to evaluate relational/edge-based probability distributions.
+		edgeView = "undirected"
 		#Initialize a model at each vertex; each host/vertex stores an 'ATT&CK_Model' table, which in turn
 		#maps each tactic name (e.g. 'lateral_movement') to its probability.
 		for v in self._graph.vs:
@@ -117,10 +126,10 @@ class NetFlowModel(object):
 		#assign lateral movement tactic probability to all nodes
 		for v in self._graph.vs:
 			attackTable = v[modelName]
-			attackTable["lateral_movement"] = self._simpleTacticProb(v, featureModel, "lateral_movement")
-			attackTable["execution"] = self._simpleTacticProb(v, featureModel, "execution")
-			attackTable["discovery"] = self._simpleTacticProb(v, featureModel, "discovery")
-			attackTable["privilege_escalation"] = self._simpleTacticProb(v, featureModel, "privilege_escalation")
+			attackTable["lateral_movement"] = self._simpleTacticProb(v, featureModel, "lateral_movement", edgeView)
+			attackTable["execution"] = self._simpleTacticProb(v, featureModel, "execution", edgeView)
+			attackTable["discovery"] = self._simpleTacticProb(v, featureModel, "discovery", edgeView)
+			attackTable["privilege_escalation"] = self._simpleTacticProb(v, featureModel, "privilege_escalation", edgeView)
 
 	def PrintAttackModels(self):
 		"""
@@ -137,7 +146,7 @@ class NetFlowModel(object):
 
 	def _getVertexEventProb(self, vertex, eventIds):
 		#@vertex: An igraph vertex object representing a host in the graph
-		#@eventIds: A list or iterable of winlog event ids. The sum probability of all these will be returned.
+		#@eventIds: A list or iterable of integer winlog event ids. The sum probability of all these will be returned.
 		if not self.HasEventModel():
 			print("ERROR called _getVertexEventProb without an initialized event-id model")
 			return 0.0
@@ -165,7 +174,7 @@ class NetFlowModel(object):
 	def _getVertexPortEventProb(self, vertex, ports, arcType="in", aggProbs=True):
 		"""
 		@vertex: An igraph vertex object from the netflow model
-		@ports: A list of ports whose sum probability will be calculated
+		@ports: A list of ports whose sum probability will be calculated; this treats port#'s in flows as independent events.
 		@arcType: One of "in", "out", or "undirected". These are defined as follows:
 			if "in", then only port events will only be evaluated from this node to other nodes
 			if "out", then only inbound traffic to this node will be evaluated 
@@ -182,17 +191,18 @@ class NetFlowModel(object):
 			If aggProbs=true, then p(port=22) = (5000+1) / 15001
 			if aggProbs=false, then p(port=22) = 1 / 5001 + 5000 / 10000
 		"""
+		arcType = arcType.lower()
 		if arcType not in {"in", "out", "undirected"}:
 			print("ERROR arcType {} invalid in _getVertexPortEventProb()".format(arcType))
 			return 0.0
 
 		#aggregate the edges over which to evaluate port activity
 		if arcType == "in":
-			edges = self._graph.es.select(_source=vertex.index)
-		elif arcType == "out":
-			edges = self._graph.es.select(_target=vertex.index)
-		elif arcType == "undirected":
 			edges = [edge for edge in self._graph.es.select(_source=vertex.index)]
+		elif arcType == "out":
+			edges = [edge for edge in self._graph.es.select(_target=vertex.index)]
+		elif arcType == "undirected":
+			edges =  [edge for edge in self._graph.es.select(_source=vertex.index)]
 			edges += [edge for edge in self._graph.es.select(_target=vertex.index)]
 
 		pPorts = 0.0
@@ -218,11 +228,13 @@ class NetFlowModel(object):
 
 		return pPorts
 
-	def _simpleTacticProb(self, vertex, featureModel, tactic):
+	def _simpleTacticProb(self, vertex, featureModel, tactic, arcType="undirected"):
 		"""
 		@vertex: An igraph vertex object in the graph
 		@featureModel: An AttackFeatureModel object
 		@tactic: One of "lateral_movement", "discovery", "execution", or "privilege_escalation".
+		@arcType: Whether or not to evaluate flow-based (relational) probabilities on the basis of outgoing
+				  host edges, incident edges, or undirected (both incident and outgoing edges).
 		"""
 		ports = []
 		eventIds = []
@@ -230,15 +242,16 @@ class NetFlowModel(object):
 		for technique in featureModel.AttackTable[tactic]:
 			ports += technique.Ports
 			eventIds += technique.WinlogEvents
-		#uniquify the events and ports
+		#uniquify the events and ports, since there will often be repeats over all of the techniques for a given tactic
 		ports = list(set(ports))
 		eventIds = list(set(eventIds))
 		
 		#with unique set of ports and event-ids, calculate the attack probability as the sum of all these events
-		prob = self._getVertexEventProb(vertex, eventIds)
-		prob += self._getVertexPortEventProb(vertex, ports, arcType="undirected", aggProbs=True)
+		eventProb = self._getVertexEventProb(vertex, eventIds)
+		portProb = self._getVertexPortEventProb(vertex, ports, arcType, aggProbs=True)
+		totalProb = eventProb + portProb
 		
-		return prob
+		return totalProb
 
 	def GetCategoricalDistributionsAsNumpyMatrix(self, dists, dtype=np.float32):
 		"""
