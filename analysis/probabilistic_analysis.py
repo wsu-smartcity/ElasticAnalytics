@@ -98,20 +98,9 @@ class ModelAnalyzer(object):
 		
 		featureModel = AttackFeatureModel()
 		self._netflowModel.InitializeMitreHostTacticModel(featureModel)
-		"""
-		tactics = ["lateral_movement", "execution", "discovery", "privilege_escalation"]
 		
-		for v in self._netflowModel.Vertices:
-			#model lateral_movement tactic probabilities on this host
-			
-			#model execution tactic probabilities on this host
-			
-			
-			#model discovery tactic probabilities on this host
-			
-			#model privilege_escalation probabilities on this host
-		"""
 		
+	def AnalyzeStationaryAttackDistribution(self):
 		
 		
 		
@@ -142,7 +131,7 @@ def main():
 	
 	hostnameConversionTable = {
 								"HP-B53-01": "192.168.0.11",	#scada 
-								"COM600-PC": "192.168.2.10"		#abb substation mgt unit
+								"COM600-PC": "192.168.2.10"		#abb substation mgt unit; aka 'rtu'
 							}
 	
 	indexPattern = "netflow*"
