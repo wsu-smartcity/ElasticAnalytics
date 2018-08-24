@@ -1,5 +1,6 @@
 import sys
 
+from random_walk import *
 from model_builder import ModelBuilder
 from elastic_client import ElasticClient
 from attack_features import *
@@ -9,6 +10,7 @@ class ModelAnalyzer(object):
 		self._netflowModel = netflowModel
 		self._winlogModel = winlogModel
 		#self._attackFeatureModel = attack_features.AttackFeaturemodel()
+		self._hasMitreTacticModel = False
 		
 	def _lateralMovementAnalysis_Old(self):
 		"""
@@ -98,12 +100,96 @@ class ModelAnalyzer(object):
 		
 		featureModel = AttackFeatureModel()
 		self._netflowModel.InitializeMitreHostTacticModel(featureModel)
+		self._hasMitreTacticModel = True #This flag is just so I don't screw up the order of model construciton and analyses
 		
+	def BuildMarkovianTacticMatrix(self, transitionMatrix)
+		"""
+		Given @transitionMatrix, a matrix describing tactical transitions between and within hosts, as defined by random_walk...
+		This matrix defines the distribution of tactical transitions, independent of the distribution of normal activity on the network...
+		The network model, @self._netflowModel, contains the distribution of normal data...
+		The hadamard product of these matrices gives an expectation of tactics, combing the two distributions.
+		By normalizing this matrix (to a doubly-stochastic matrix), we get a markov transition model by which to calculate
+		stationary distributions over tactics and hosts.
+		"""
 		
 	def AnalyzeStationaryAttackDistribution(self):
+		"""
+		Implements the algorithm for estimating the steady state distribution of attacks per hosts on the network.
+		"""
 		
+		if not self._hasMitreTacticModel:
+			print("ERROR mitre tactic models not yet initialized, stationary analysis aborted")
+			return
 		
+		#The random walk script manually defines hosts by name; to relate these with the network model we need a map.
+		#The nulls are in progress and will just be omitted from out mathematical models; we just need to formalize the who's-who in our data.
+		hostMap = {
+				"scada"  : "192.168.0.11",
+				"hmi"    : "NULL",
+				"sw1"    : "NULL",
+				"fw1"    : "NULL",
+				"fw2"    : "NULL",
+				"sw2"    : "NULL",
+				"gw"     : "192.168.0.10",
+				"eng"    : "NULL",
+				"relay1" : "192.168.2.101",
+				"relay2" : "192.168.2.102",
+				"relay3" : "192.168.2.103",
+				"relay4" : "192.168.2.104",
+				"relay5" : "192.168.2.105",
+				"relay6" : "192.168.2.106",
+				"relay7" : "192.168.2.107",
+				"relay8" : "192.168.2.108"
+			}
 		
+		"""
+		First, generate a ton of walks on the host graph, under the distribution dictated in random_walk.py.
+		These can be used to construct a frequency matrix of transitions between tactics; the rows/cols of this 
+		matrix are the hosts on the network. The diagonal elements represent host-level events, whereas the off-diagonal
+		are tactics representing a transition from one host to another. Here, the matrix is simply built
+		and returned from some previously stored walks; this separates the walk process and the matrix-construction.
+		"""
+		generator = RandomWalkGenerator(show=False)
+		#@matrix is a bit misleading; remember this is an (n x n x #tactics) matrix, so a stack of n x n matrices, each of which is for some tactic
+		matrix, hostIndex, tacticIndex = generator.BuildRandomWalkMatrix(hostMap.keys())
+		print(str(hostIndex))
+		print(str(tacticIndex))
+		print(str(matrix))
+		print(str(matrix.shape))
+		
+		"""
+		Now derive a matrix combining the walk-frequency matrix with the empirical data stored in the netflow model.
+		This represents a metric of observability, but the language needs to be tightened up a bit.
+		"""
+		matrix = self._stochasticizeMatrix(matrix)
+		print("TODO: fill hostMap, and also makes sure the graph topology in random_walk matches the netflow model (can these manual connections be factored out?)")
+		
+	def _stochasticizeMatrix(self, matrix):
+		"""
+		Utility for converting any real-valued, positive, square matrix to a stochastic matrix suitable as a transition model,
+		which permits it to be analyzed using markovian approaches and other good stuff.
+		
+		A positive matrix can be converted into a stochastic matrix by simply dividing each row by its sum; in graphical
+		terms, this is equivalent to converting outgoing flow at each node (a row in a matrix) to a probability distribution
+		by just dividing the outgoing rates by the sum over all outgoing edges.
+		
+		Returns: A copy of @matrix stochasticized
+		"""
+		
+		if matrix.shape[0] != matrix.shape[1]:
+			print("ERROR matrix not square in _stochasticizeMatrix")
+			raise Exception("Non-square matrix passed to _stochasticizeMatrix")
+		if any([matrix[i,j] < 0 for i in matrix.shape[0] for j in matrix.shape[j] ]):
+			print("ERROR matrix not positive in _stochasticizeMatrix")
+			raise Exception("Non-positive matrix passed to _stochasticizeMatrix")
+		
+		model = np.zeros(shape=(matrix.shape[0],matrix.shape[1]))
+		
+		for row in range(matrix.shape[0]):
+			rowSum = np.sum(matrix[row,:])
+			model[row,:] = matrix[row,:] / rowSum
+
+		return model
 		
 def main():
 	#Build the client
@@ -149,6 +235,10 @@ def main():
 	analyzer.AssignMitreTacticProbabilities()
 	netflowModel.Save("netflowModel.pickle")
 	netflowModel.PrintAttackModels()
+	
+	analyzer.AnalyzeStationaryAttackDistribution()
+	
+	
 		
 if __name__ == "__main__":
 	main()

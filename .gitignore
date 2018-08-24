@@ -9,3 +9,4 @@ analysis/pickled_model
 analysis/junk.json
 analysis/netflowModel.pickle
 analysis/network.png
+analysis/walks.py
