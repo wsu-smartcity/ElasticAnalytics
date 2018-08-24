@@ -126,11 +126,15 @@ class NetFlowModel(object):
 		#assign lateral movement tactic probability to all nodes
 		for v in self._graph.vs:
 			attackTable = v[modelName]
+			#Lateral movement can be characterized as both a host-level and relational/edge-based. The former
+			#gives a single value per-host; the latter gives multiple values for a host, one for each of its peers (a transition model).
+			#I build and store both, since both may be useful.
+			attackTable["lateral_movement_relational"] = self._relationalTacticProb(v, featureModel, "lateral_movement")
 			attackTable["lateral_movement"] = self._simpleTacticProb(v, featureModel, "lateral_movement", edgeView)
 			attackTable["execution"] = self._simpleTacticProb(v, featureModel, "execution", edgeView)
 			attackTable["discovery"] = self._simpleTacticProb(v, featureModel, "discovery", edgeView)
 			attackTable["privilege_escalation"] = self._simpleTacticProb(v, featureModel, "privilege_escalation", edgeView)
-
+		
 	def PrintAttackModels(self):
 		"""
 		Print ATT&CK table data at each node, in which we stored tactic probabilities at each node.
@@ -142,7 +146,6 @@ class NetFlowModel(object):
 		for v in self._graph.vs:
 			model = v[self._mitreModelName]
 			print("{} model: {}".format(v["name"], model))
-			
 
 	def _getVertexEventProb(self, vertex, eventIds):
 		#@vertex: An igraph vertex object representing a host in the graph
@@ -176,8 +179,8 @@ class NetFlowModel(object):
 		@vertex: An igraph vertex object from the netflow model
 		@ports: A list of ports whose sum probability will be calculated; this treats port#'s in flows as independent events.
 		@arcType: One of "in", "out", or "undirected". These are defined as follows:
-			if "in", then only port events will only be evaluated from this node to other nodes
-			if "out", then only inbound traffic to this node will be evaluated 
+			if "out", then only port events from this host to other hosts (including itself) will be evaluated
+			if "in", then only inbound traffic to this node will be evaluated 
 			if "undirected", then all in/out traffic will be evaluated.
 			These options can lead to completely different estimates and views of vulnerability,
 			depending on the desired view: outlinks, inlinks, or undirected models. "In" reflects
@@ -197,9 +200,9 @@ class NetFlowModel(object):
 			return 0.0
 
 		#aggregate the edges over which to evaluate port activity
-		if arcType == "in":
+		if arcType == "out":
 			edges = [edge for edge in self._graph.es.select(_source=vertex.index)]
-		elif arcType == "out":
+		elif arcType == "in":
 			edges = [edge for edge in self._graph.es.select(_target=vertex.index)]
 		elif arcType == "undirected":
 			edges =  [edge for edge in self._graph.es.select(_source=vertex.index)]
@@ -227,7 +230,55 @@ class NetFlowModel(object):
 					print("prob/Z {} {}".format(pPorts, z))
 
 		return pPorts
-
+		
+	def _relationalTacticProb(self, vertex, featureModel, tactic):
+		"""
+		In contrast to _simpleTacticProb, this returns not a scalar value but a list of tactic probabilities
+		each with an associated peer/host. Whereas _simpleTacticProb evaluates local host behavior, _relationalTacticProb
+		returns probabilities that depend on each neighbor of some host, and returns the probability of the tactic for each
+		such host as a list: [(hostname, tactic-prob), (hostname, tactic-prob), ...]. This is akin to a transition model
+		for the current host and tactic.
+		
+		NOTE: This function was modeled only after lateral-movement tactics, and would need to be evaluated for others
+		as to how they should be implemented. For example, should winlog event-ids for relational tactic features be
+		evaluated at the source host or dest? It really depends on the tactic itself. For now, I'm only including 
+		outgoing port-based features, since these are the only relational data we have.
+		
+		NOTE: Many hosts will have no relational tactic probs, such as if they are slave devices and only/mostly receive messages.
+		Also, I omitted arcType (edge direction) from this function, since this method tends to imply a directed model. But you
+		could hack undirected edge distributions simply by calling this function for some subset of neighbors in the graph and
+		unioning the result.
+		
+		@vertex: An igraph vertex object in the graph
+		@featureModel: An AttackFeatureModel object
+		@tactic: One of "lateral_movement", "discovery", "execution", or "privilege_escalation".
+		"""
+		ports = []
+		eventIds = []
+		#first union all of the unique features to analyze, since there is significant overlap
+		for technique in featureModel.AttackTable[tactic]:
+			ports += technique.Ports
+			#eventIds += technique.WinlogEvents
+		#uniquify the events and ports, since there will often be repeats over all of the techniques for a given tactic
+		ports = list(set(ports))
+		#eventIds = list(set(eventIds))
+		
+		#calculate the probability of the given features for all neighboring hosts in the netflow model
+		neighborProbs = []
+		for edge in self._graph.es.select(_source=vertex.index):
+			#get the probability of these port events per each destination host
+			host = self._graph.vs[edge.target]["name"]
+			portModel = edge["port"]["port"]
+			z = float(sum([val for val in portModel.values()]))
+			pPorts = float(sum([portModel[port] for port in ports if port in portModel]))
+			if z > 0:
+				pPorts = pPorts / z
+				neighborProbs.append( (host, pPorts) )
+			else:
+				print("WARNING z<=0 in _relationalTacticProb. prob/Z {} {}".format(pPorts, z))
+		
+		return neighborProbs
+		
 	def _simpleTacticProb(self, vertex, featureModel, tactic, arcType="undirected"):
 		"""
 		@vertex: An igraph vertex object in the graph
@@ -253,6 +304,68 @@ class NetFlowModel(object):
 		
 		return totalProb
 
+	def GetSystemMitreAttackDistribution(self, includeLmAsHostFeature=False, tacticIndex=None):
+		"""
+		Given that we have constructed the MITRE-based attack feature distributions within the netflow-model,
+		we have a complete description of the probability of different ATT&CK tactic features at each host.
+		This method compiles and returns these distributions in a single matrix. The matrix is square n x n, but
+		has an additional axis for four different tactics: {privilege escalation, execution, lateral movement,
+		and discovery}. Thus the matrix is n x n x #tactics = n x n x 4, where n = #hosts. Of course by summing
+		along the tactic axis, one gets a simplified n x n matrix describing the distribution over the union of
+		all/any tactics.
+		
+		Also recall that the empirical cyber distribution describes the probability of tactic features, and is thus
+		limited in scope to what features are defined in attack_features.py.
+		
+		@includeLmAsHostFeature: Whether or not to include lateral-movement at the host level, which means it is
+		a diagonal element in the matrix; if false, then lateral-movement is included as transition based feature,
+		off diagonal.
+		@tacticIndex: If passed, this preserves the mapping of tactic names to indices along the third axis of @D_system
+						such as to keep it aligned with another matrix. Otherwise this matrix is just created here.
+		
+		Returns: @D_system, an n x n x 4 matrix, as described
+				@hostIndex: Per usual, maps host names to row/col indices in @D_system
+				@tacticIndex: Maps tactics to 
+		"""
+		
+		#create a matrix of the host in the netflow model
+		nHosts = len(self._graph.vs)
+		#build a mapping from hostnames to matrix indices
+		hostIndex = dict((v,i) for i, v in enumerate(self._graph.vs))
+		if tacticIndex is None:
+			#the mapping from implemented tactics to matrix indices along the matrix' third axis
+			tactics=["lateral-movement", "privilege-escalation", "discovery", "execution"]
+			tacticIndex = dict((tactic, i) for i, tactic in enumerate(tactics))
+		#build the system matrix
+		D_system = np.zeros(shape=(nHosts, nHosts), dtype=np.float)
+		#populate the matrix
+		for v in self._graph.vs:
+			#get the vertex' attack probability table
+			attackTable = v[self._mitreModelName]
+			#get this host's row/col index in the matrix
+			v_i = hostIndex[v["name"]]
+			#fill diagonal elements with on-host attack event feature probabilities: discovery, execution, privilege escalation
+			#get exe prob
+			exeProb = attackTable["execution"]
+			exe_k = tacticIndex["execution"]
+			D_system[v_i, v_i, exe_k] = exeProb
+			#get discovery prob
+			discProb = attackTable["discovery"]
+			disc_k = tacticIndex["discovery"]
+			D_system[v_i, v_i, disc_k] = discProb
+			#privilege escalation
+			peProb = attackTable["privilege_escalation"]
+			pe_k = tacticIndex["privilege-escalation"]
+			D_system[v_i, v_i, pe_k] = peProb
+			#now set the off-diagonal elements with individual lateral-movement feature probabilities
+			lm_k = tacticIndex["lateral-movement"]
+			for neighbor, lmProb in attackTable["lateral_movement_relational"]:
+				neighbor_i = hostIndex[neighbor]
+				D_system[neighbor_i, neighbor_i, lm_k] = lmProb
+
+		return D_system, hostIndex, tacticIndex
+				
+		
 	def GetCategoricalDistributionsAsNumpyMatrix(self, dists, dtype=np.float32):
 		"""
 		Accepts @dists, a set of n k-dimensional categorical distributions, and converts each distribution to a numpy 

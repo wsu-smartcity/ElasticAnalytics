@@ -4,6 +4,19 @@ Hence the dependence is tactic -> technique -> features.
 
 Rather than being manually compiled and stored, the features could be shared/automated
 in some way using stix-like behavioral analytics or unfetter.
+
+TODO: Not so much a todo as an important note. There is a code-smell here in that the AttackFeatureModel
+provides static definitions of features of tactics. This has a bunch of problems which may not be readily
+apparent, such as forcing each tactic/technique into some rigid feature model for analysis. A much better
+way would be to let the tactics themselves evaluate their probability/features and so forth; its a straightforward
+case of placing this logic in the objects that ought to control it. This is made obvious by things like evaluating
+the probability of a network scan for a discovery technique; clearly this is just a 0/1 value, and likewise 
+it requires some custom script and binary classifier for querying elastic to detect network scans for different
+hosts/edges. None of that is amenable to a rigid, static feature model definition of ports, event-ids, and so on.
+More dynamic behavior is required. Placing this logic into Tactic objects would be a straightforward example of
+dependency inversion, and I think Unfetter Analytic obeys a similar pattern: each tactic/technique defines its
+own evaluation/detection. Just like a character or object in a video game might implement its survival/destruction
+logic.
 """
 
 #TODO: Seems like an indicator of poor code factoring to bring query_builder into here to construct detection-feature queries; and only currently used for network-scan-detection query
@@ -16,6 +29,9 @@ class Technique(object):
 		or in binary fashion, meaning anything detected under some criterion is malicious (e.g. signature detection).
 		@esQuery: An elasticsearch query returning results only if its conditions are satisfied. One can craft
 					a query to detect very specific behavior, such as network scans.
+					
+		TODO: See file header. I think this class should be refactored to implemented its own probabilistic
+		evaluation and detection logic.
 		"""
 
 		self.Ports = portList

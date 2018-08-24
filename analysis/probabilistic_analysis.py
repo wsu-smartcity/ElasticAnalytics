@@ -102,21 +102,21 @@ class ModelAnalyzer(object):
 		self._netflowModel.InitializeMitreHostTacticModel(featureModel)
 		self._hasMitreTacticModel = True #This flag is just so I don't screw up the order of model construciton and analyses
 		
-	def BuildMarkovianTacticMatrix(self, transitionMatrix)
+	def BuildMarkovianTacticMatrix(self, transitionMatrix):
 		"""
-		Given @transitionMatrix, a matrix describing tactical transitions between and within hosts, as defined by random_walk...
-		This matrix defines the distribution of tactical transitions, independent of the distribution of normal activity on the network...
-		The network model, @self._netflowModel, contains the distribution of normal data...
-		The hadamard product of these matrices gives an expectation of tactics, combing the two distributions.
+		Given @transitionMatrix, a matrix describing tactical transitions between and within hosts, as defined by random_walk.
+		This matrix defines the distribution of tactical transitions, independent of the distribution of normal activity on the network.
+		The network model, @self._netflowModel, contains the distribution of normal data.
+		The hadamard product of these matrices gives an expectation of tactics which combines the two distributions.
 		By normalizing this matrix (to a doubly-stochastic matrix), we get a markov transition model by which to calculate
 		stationary distributions over tactics and hosts.
 		"""
+		pass
 		
 	def AnalyzeStationaryAttackDistribution(self):
 		"""
 		Implements the algorithm for estimating the steady state distribution of attacks per hosts on the network.
 		"""
-		
 		if not self._hasMitreTacticModel:
 			print("ERROR mitre tactic models not yet initialized, stationary analysis aborted")
 			return
@@ -150,19 +150,40 @@ class ModelAnalyzer(object):
 		and returned from some previously stored walks; this separates the walk process and the matrix-construction.
 		"""
 		generator = RandomWalkGenerator(show=False)
-		#@matrix is a bit misleading; remember this is an (n x n x #tactics) matrix, so a stack of n x n matrices, each of which is for some tactic
-		matrix, hostIndex, tacticIndex = generator.BuildRandomWalkMatrix(hostMap.keys())
+		#remember @D_attack is an (n x n x #tactics) matrix, so a stack of n x n matrices, each of which is for some tactic
+		D_attack, hostIndex, tacticIndex = generator.BuildRandomWalkMatrix(hostMap.keys())
 		print(str(hostIndex))
 		print(str(tacticIndex))
-		print(str(matrix))
-		print(str(matrix.shape))
+		print(str(D_attack))
+		print(str(D_attack.shape))
 		
 		"""
-		Now derive a matrix combining the walk-frequency matrix with the empirical data stored in the netflow model.
-		This represents a metric of observability, but the language needs to be tightened up a bit.
+		Now derive a matrix combining the attack frequency distribution @D_attack, with the empirical system data, @D_system, stored in the netflow model.
+		Loosely speaking, this represents a metric of observability, although the language needs to be tightened up.
 		"""
+		D_system, hostIndex, tacticIndex = self._netflowModel.GetSystemMitreAttackDistribution(hostIndex, tacticIndex)
+		
 		matrix = self._stochasticizeMatrix(matrix)
 		print("TODO: fill hostMap, and also makes sure the graph topology in random_walk matches the netflow model (can these manual connections be factored out?)")
+		
+	def _getSystemMitreAttackDistribution(self):
+		"""
+		Given that we have constructed the MITRE-based attack feature distributions within the netflow-model,
+		we have a complete description of the probability of different ATT&CK tactic features at each host.
+		This method compiles and returns these distributions in a single matrix. The matrix is square n x n, but
+		has an additional axis for four different tactics: {privilege escalation, execution, lateral movement,
+		and discovery}. Thus the matrix is n x n x #tactics = n x n x 4, where n = #hosts. Of course by summing
+		along the tactic axis, one gets a simplified n x n matrix describing the distribution over the union of
+		all/any tactics.
+		
+		Also recall that the empirical cyber distribution describes the probability of tactic features, and is thus
+		limited in scope to what features are defined in attack_features.py.
+		"""
+		
+		
+		
+		
+		
 		
 	def _stochasticizeMatrix(self, matrix):
 		"""
@@ -179,7 +200,8 @@ class ModelAnalyzer(object):
 		if matrix.shape[0] != matrix.shape[1]:
 			print("ERROR matrix not square in _stochasticizeMatrix")
 			raise Exception("Non-square matrix passed to _stochasticizeMatrix")
-		if any([matrix[i,j] < 0 for i in matrix.shape[0] for j in matrix.shape[j] ]):
+		hasNegativeEntries = len(matrix[matrix < 0])
+		if not isPositiveMatrix:
 			print("ERROR matrix not positive in _stochasticizeMatrix")
 			raise Exception("Non-positive matrix passed to _stochasticizeMatrix")
 		
