@@ -156,7 +156,7 @@ class NetFlowModel(object):
 		
 		eventModel = vertex["event_id"]
 		#print("{}".format(eventModel))
-		#vertex' event_id model is None if it has no data, as for many ied's
+		#vertex' event_id model is None if it has no data, as for many ied's, such as the relays. Event ids typically pertain only to scada, fw, hmi, and similar devices.
 		if eventModel is None:
 			print("warning: {} not in eventModel".format(vertex["name"]))
 			return 0.0
@@ -263,6 +263,8 @@ class NetFlowModel(object):
 		ports = list(set(ports))
 		#eventIds = list(set(eventIds))
 		
+		print("PORTS: "+str(ports))
+		
 		#calculate the probability of the given features for all neighboring hosts in the netflow model
 		neighborProbs = []
 		for edge in self._graph.es.select(_source=vertex.index):
@@ -270,7 +272,8 @@ class NetFlowModel(object):
 			host = self._graph.vs[edge.target]["name"]
 			portModel = edge["port"]["port"]
 			z = float(sum([val for val in portModel.values()]))
-			pPorts = float(sum([portModel[port] for port in ports if port in portModel]))
+			pPorts = float(sum([portModel[port] for port in ports if port in portModel.keys()]))
+			print("P PORTS: "+str(pPorts))
 			if z > 0:
 				pPorts = pPorts / z
 				neighborProbs.append( (host, pPorts) )
@@ -304,7 +307,7 @@ class NetFlowModel(object):
 		
 		return totalProb
 
-	def GetSystemMitreAttackDistribution(self, includeLmAsHostFeature=False, tacticIndex=None):
+	def GetSystemMitreAttackDistribution(self, tacticIndex=None):
 		"""
 		Given that we have constructed the MITRE-based attack feature distributions within the netflow-model,
 		we have a complete description of the probability of different ATT&CK tactic features at each host.
@@ -317,9 +320,6 @@ class NetFlowModel(object):
 		Also recall that the empirical cyber distribution describes the probability of tactic features, and is thus
 		limited in scope to what features are defined in attack_features.py.
 		
-		@includeLmAsHostFeature: Whether or not to include lateral-movement at the host level, which means it is
-		a diagonal element in the matrix; if false, then lateral-movement is included as transition based feature,
-		off diagonal.
 		@tacticIndex: If passed, this preserves the mapping of tactic names to indices along the third axis of @D_system
 						such as to keep it aligned with another matrix. Otherwise this matrix is just created here.
 		
@@ -331,17 +331,18 @@ class NetFlowModel(object):
 		#create a matrix of the host in the netflow model
 		nHosts = len(self._graph.vs)
 		#build a mapping from hostnames to matrix indices
-		hostIndex = dict((v,i) for i, v in enumerate(self._graph.vs))
+		hostIndex = dict((v["name"],i) for i, v in enumerate(self._graph.vs))
 		if tacticIndex is None:
 			#the mapping from implemented tactics to matrix indices along the matrix' third axis
-			tactics=["lateral-movement", "privilege-escalation", "discovery", "execution"]
-			tacticIndex = dict((tactic, i) for i, tactic in enumerate(tactics))
+			tacticIndex = {"discovery" : 0, "lateral-movement" : 1 , "privilege-escalation" : 2, "execution" : 3}
 		#build the system matrix
-		D_system = np.zeros(shape=(nHosts, nHosts), dtype=np.float)
+		nTactics = len(tacticIndex.keys())
+		D_system = np.zeros(shape=(nHosts, nHosts, nTactics), dtype=np.float)
 		#populate the matrix
 		for v in self._graph.vs:
 			#get the vertex' attack probability table
 			attackTable = v[self._mitreModelName]
+			print("ATTACK TABLE: "+str(attackTable))
 			#get this host's row/col index in the matrix
 			v_i = hostIndex[v["name"]]
 			#fill diagonal elements with on-host attack event feature probabilities: discovery, execution, privilege escalation
@@ -361,8 +362,8 @@ class NetFlowModel(object):
 			lm_k = tacticIndex["lateral-movement"]
 			for neighbor, lmProb in attackTable["lateral_movement_relational"]:
 				neighbor_i = hostIndex[neighbor]
-				D_system[neighbor_i, neighbor_i, lm_k] = lmProb
-
+				D_system[v_i, neighbor_i, lm_k] = lmProb
+				
 		return D_system, hostIndex, tacticIndex
 				
 		

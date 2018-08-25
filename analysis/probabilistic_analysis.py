@@ -130,7 +130,7 @@ class ModelAnalyzer(object):
 				"fw1"    : "NULL",
 				"fw2"    : "NULL",
 				"sw2"    : "NULL",
-				"gw"     : "192.168.0.10",
+				"gw"     : "192.168.2.10",
 				"eng"    : "NULL",
 				"relay1" : "192.168.2.101",
 				"relay2" : "192.168.2.102",
@@ -150,24 +150,116 @@ class ModelAnalyzer(object):
 		and returned from some previously stored walks; this separates the walk process and the matrix-construction.
 		"""
 		generator = RandomWalkGenerator(show=False)
+		#Get a whitelist of systems of interest to include in walk matrix
+		whitelist = [key for key in hostMap.keys() if hostMap[key] != "NULL"] #only analyze hosts we can bind to an address in the data
+		print("Whitelist: "+str(whitelist))
 		#remember @D_attack is an (n x n x #tactics) matrix, so a stack of n x n matrices, each of which is for some tactic
-		D_attack, hostIndex, tacticIndex = generator.BuildRandomWalkMatrix(hostMap.keys())
-		print(str(hostIndex))
+		D_attack, attackHostIndex, tacticIndex = generator.BuildRandomWalkMatrix(whitelist)
+		print(str(attackHostIndex))
 		print(str(tacticIndex))
 		print(str(D_attack))
 		print(str(D_attack.shape))
+
+		#The next few steps are all matrix alignment, since their row/cols are index by different hostnames, and may differ in size
+		D_system, systemHostIndex, systemTacticIndex = self._netflowModel.GetSystemMitreAttackDistribution(tacticIndex)
+		#filter the system model to only include the systems listed above in @hostMap; this must be done to 'align' the two models
+		systemWhitelist = [hostMap[host] for host in whitelist]
+		D_system, systemHostIndex = self._filterMatrix(D_system, systemHostIndex, systemWhitelist)
+
+		#Alias the walk-based host keys by their physical addresses in @hostMap, to begin aligning the two matrices.
+		attackHostIndex = self._aliasMatrixIndex(attackHostIndex, hostMap) #As a result of this, both matrix indices have the same keys, but different value mappings.
 		
-		"""
-		Now derive a matrix combining the attack frequency distribution @D_attack, with the empirical system data, @D_system, stored in the netflow model.
-		Loosely speaking, this represents a metric of observability, although the language needs to be tightened up.
-		"""
-		D_system, hostIndex, tacticIndex = self._netflowModel.GetSystemMitreAttackDistribution(hostIndex, tacticIndex)
+		#Re-order the attack matrix, which is organized by hostnames ("gw", "scada", etc), to be the same as D_system,
+		#which is organized by the vertex names (ip addresses) in the netflow model.
+		D_attack, attackHostIndex = self._reorderMatrix(D_attack, attackHostIndex, systemHostIndex)
+		#From here, the two matrices @D_attack and @D_system are aligned, s.t. their rowIndices are equal.
 		
-		matrix = self._stochasticizeMatrix(matrix)
+		print("D_ATTACK: "+str(D_attack))
+		print("D_SYSTEM: "+str(D_system))
+		exit()
+		
+		
+		#element-wise multiply the two matrices, aka hadamard product. Be careful with numpy: np.matrix '*' operator is inner-product; ndarray '*' operator means hadamard/elementwise
+		D_transition = D_attack * D_system
+		
+		D_transition = self._stochasticizeMatrix(D_transition, aggregateThirdAxis=True)
 		print("TODO: fill hostMap, and also makes sure the graph topology in random_walk matches the netflow model (can these manual connections be factored out?)")
 		
-	def _getSystemMitreAttackDistribution(self):
+	def _aliasMatrixIndex(self, originalIndex, keyAliasMap):
 		"""
+		Given a matrix row/col index mapping names to corresponding integer row/col values,
+		and a map converting its keys to alias strings, just replaces those keys with the
+		alias strings.
+		
+		@originalIndex: A map of string keys to matrix row/col integers
+		@keyAliasMap: A map from key strings to alias strings. Every key in @originalIndex
+		will be replaced by the values in this map.
+		"""
+		newIndex = dict()
+		for key, val in originalIndex.items():
+			newIndex[ keyAliasMap[key] ] = val
+		return newIndex
+		
+	def _filterMatrix(self, M, hostIndex, hostWhitelist):	
+		"""
+		NOTE: This is a duplicate of random_walk.py's _filterWalkMatrix.
+		
+		From @M, return a matrix consisting only of the subset of rows/cols included in @hostWhitelist.
+		
+		@M: An n x n x k matrix, where k > 1.
+		@hostIndex: A map of host names to their corresponding row/col indices in @MITRE
+		@hostWhitelist: A list of hosts; only these will be included in the returned items
+
+		Returns: @M_filtered, a matrix consisting only of the host rows/cols included in hostWhitelist,
+				@hostIndex_filtered: The same as @hostIndex, but with only the hosts in @hostWhitelist
+		"""
+		
+		if len(M.shape) < 3:
+			print("ERROR _filterMatrix called for matrix with fewer than three axes")
+			return M, hostIndex
+		
+		n = len(hostWhitelist)
+		numTactics = M.shape[2]
+		M_filtered = np.zeros(shape=(n,n,numTactics))
+		#build the filtered hostIndex
+		filteredIndex = dict((host, i) for i, host in enumerate(hostWhitelist))
+
+		for host in hostWhitelist:
+			h_i = hostIndex[host]
+			h_f_i = filteredIndex[host]
+			M_filtered[h_f_i, h_f_i, :] = M[h_i, h_i, :]
+		
+		return M_filtered, filteredIndex
+
+	def _reorderMatrix(self, M, currentIndex, targetIndex):
+		"""
+		Frequently we are building matrices whose rows/cols represent certain hosts,
+		but the mapping from host-names to row/col indices in any given matrix is artbirary
+		depending on the information available. The lack of order makes matrix operations meaningless
+		due to lack of alignment. This function take a matrix @M and its current mapping @currentIndex from
+		strings to row/col indices and re-orders it to the same order as @targetIndex. Only rows/cols
+		are re-ordered; any third axis info order is preserved.
+		
+		@M: Some n x n x k matrix; could also be n x n. Two or three axes matrices are supported. @M must be square
+			in the sense that it is a symmetric matrix along any slice of its third axis.
+		@currentIndex: Current mapping from string values to row/col integer indices of @MITRE
+		@targetIndex: The target mapping. Note that @currentIndex and @targetIndex must have all the same
+			keys, and the same values, but a different mapping from keys to values.
+		"""
+		M_new = np.zeros(shape=M.shape)
+		isThreeAxis = len(M.shape) == 3
+		for name, index in currentIndex.items():
+			newIndex = targetIndex[name]
+			if isThreeAxis:
+				M_new[newIndex, newIndex, :] = M[index, index, :]
+			else:
+				M_new[newIndex, newIndex] = M[index,index]
+				
+		return M_new, targetIndex
+
+	"""
+	def _getSystemMitreAttackDistribution(self):
+		
 		Given that we have constructed the MITRE-based attack feature distributions within the netflow-model,
 		we have a complete description of the probability of different ATT&CK tactic features at each host.
 		This method compiles and returns these distributions in a single matrix. The matrix is square n x n, but
@@ -178,14 +270,11 @@ class ModelAnalyzer(object):
 		
 		Also recall that the empirical cyber distribution describes the probability of tactic features, and is thus
 		limited in scope to what features are defined in attack_features.py.
-		"""
 		
-		
-		
-		
-		
-		
-	def _stochasticizeMatrix(self, matrix):
+		pass
+	"""
+				
+	def _stochasticizeMatrix(self, matrix, aggregateThirdAxis=True):
 		"""
 		Utility for converting any real-valued, positive, square matrix to a stochastic matrix suitable as a transition model,
 		which permits it to be analyzed using markovian approaches and other good stuff.
@@ -197,19 +286,33 @@ class ModelAnalyzer(object):
 		Returns: A copy of @matrix stochasticized
 		"""
 		
+		print("Stochasticize: "+str(matrix))
+		
 		if matrix.shape[0] != matrix.shape[1]:
 			print("ERROR matrix not square in _stochasticizeMatrix")
 			raise Exception("Non-square matrix passed to _stochasticizeMatrix")
+
 		hasNegativeEntries = len(matrix[matrix < 0])
-		if not isPositiveMatrix:
+		if hasNegativeEntries:
 			print("ERROR matrix not positive in _stochasticizeMatrix")
 			raise Exception("Non-positive matrix passed to _stochasticizeMatrix")
 		
-		model = np.zeros(shape=(matrix.shape[0],matrix.shape[1]))
+		if aggregateThirdAxis and len(matrix.shape) < 3:
+			print("ERROR passed aggregateThirdAxis=True to _stochasticizeMatrix, but matrix of shape "+str(matrix.shape))
+			raise Exception("Passed aggregateThirdAxis=True to _stochasticizeMatrix, but matrix of shape "+str(matrix.shape))
 		
-		for row in range(matrix.shape[0]):
-			rowSum = np.sum(matrix[row,:])
-			model[row,:] = matrix[row,:] / rowSum
+		if not aggregateThirdAxis:
+			print("ERROR aggregateThirdAxis=False, but not implemented yet")
+			raise Exception("aggregateThirdAxis=False not implemented")
+		else:
+			model = np.zeros(shape=(matrix.shape[0],matrix.shape[1]))
+			for row in range(matrix.shape[0]):
+				#aggregate the row along the third/tactic axis
+				aggRow = np.sum(matrix[row,:,:], axis=1) #get the 2d row
+				rowSum = np.sum(aggRow)
+				if rowSum <= 0:
+					print("ERROR rowSum="+str(rowSum))
+				model[row,:] = aggRow / rowSum
 
 		return model
 		
