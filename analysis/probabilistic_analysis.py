@@ -1,3 +1,5 @@
+from __future__ import print_function
+
 import sys
 
 from random_walk import *
@@ -102,17 +104,27 @@ class ModelAnalyzer(object):
 		self._netflowModel.InitializeMitreHostTacticModel(featureModel)
 		self._hasMitreTacticModel = True #This flag is just so I don't screw up the order of model construciton and analyses
 		
-	def BuildMarkovianTacticMatrix(self, transitionMatrix):
-		"""
-		Given @transitionMatrix, a matrix describing tactical transitions between and within hosts, as defined by random_walk.
-		This matrix defines the distribution of tactical transitions, independent of the distribution of normal activity on the network.
-		The network model, @self._netflowModel, contains the distribution of normal data.
-		The hadamard product of these matrices gives an expectation of tactics which combines the two distributions.
-		By normalizing this matrix (to a doubly-stochastic matrix), we get a markov transition model by which to calculate
-		stationary distributions over tactics and hosts.
-		"""
-		pass
-		
+	def _errorCheckKeys(self, hostMap, attackHostIndex, whitelist):
+		success = True
+		#Single purpose error check, placed here to de-clutter error checking in AnalyzeStationaryAttackDistribution.
+		#This verifies that all whitelisted hostMap keys are in attackHostIndex, and vice versa.
+		missingKeys = set(hostMap).intersection(set(whitelist)).difference( set(attackHostIndex.keys()))
+		if any(missingKeys): #check for keys in hostMap missing from attackHostIndex
+			print("ERROR keys in hostMap missing from attackHostIndex: {}".format(missingKeys))
+			print("hostMap: {}".format(hostMap))
+			print("Whitelist: {}".format(whitelist))
+			print("attackHostIndex: {}".format(attackHostIndex))
+			success = False
+		#the opposite case: check for keys in attackHostIndex missing from hostMap
+		missingKeys = set(attackHostIndex.keys()).difference( set(hostMap.keys()))
+		if any(missingKeys):
+			print("ERROR keys in attackHostIndex missing from hostMap: {}".format(missingKeys))
+			print("hostMap: {}".format(hostMap))
+			print("Whitelist: {}".format(whitelist))
+			print("attackHostIndex: {}".format(attackHostIndex))
+			success = False
+		return success
+			
 	def AnalyzeStationaryAttackDistribution(self):
 		"""
 		Implements the algorithm for estimating the steady state distribution of attacks per hosts on the network.
@@ -120,6 +132,8 @@ class ModelAnalyzer(object):
 		if not self._hasMitreTacticModel:
 			print("ERROR mitre tactic models not yet initialized, stationary analysis aborted")
 			return
+		
+		np.set_printoptions(precision=4, suppress=True)
 		
 		#The random walk script manually defines hosts by name; to relate these with the network model we need a map.
 		#The nulls are in progress and will just be omitted from out mathematical models; we just need to formalize the who's-who in our data.
@@ -155,13 +169,19 @@ class ModelAnalyzer(object):
 		print("Whitelist: "+str(whitelist))
 		#remember @D_attack is an (n x n x #tactics) matrix, so a stack of n x n matrices, each of which is for some tactic
 		D_attack, attackHostIndex, tacticIndex = generator.BuildRandomWalkMatrix(whitelist)
-		print(str(attackHostIndex))
-		print(str(tacticIndex))
-		print(str(D_attack))
-		print(str(D_attack.shape))
+		self.PrintHostTacticMatrix(D_attack, attackHostIndex)
+		
+		#Error check the @hostMap host keys and those stored in @attackHostIndex, the host-index returned by BuildRandomWalkMatrix().
+		#This is a critical check to alert, since the walk matrix is built from previously-generated walks/hosts; if those become out of date, we want to know about it.
+		print("Error checking matrix keys...",end="")
+		check = "PASS" if self._errorCheckKeys(hostMap, attackHostIndex, whitelist) else "FAIL"
+		print(check)
 
 		#The next few steps are all matrix alignment, since their row/cols are index by different hostnames, and may differ in size
 		D_system, systemHostIndex, systemTacticIndex = self._netflowModel.GetSystemMitreAttackDistribution(tacticIndex)
+		print("System attack matrix: ")
+		self.PrintHostTacticMatrix(D_system, systemHostIndex)
+		print("System tactic index: "+str(sorted(systemTacticIndex.items(), key= lambda t:t[1])))
 		#filter the system model to only include the systems listed above in @hostMap; this must be done to 'align' the two models
 		systemWhitelist = [hostMap[host] for host in whitelist]
 		D_system, systemHostIndex = self._filterMatrix(D_system, systemHostIndex, systemWhitelist)
@@ -174,16 +194,28 @@ class ModelAnalyzer(object):
 		D_attack, attackHostIndex = self._reorderMatrix(D_attack, attackHostIndex, systemHostIndex)
 		#From here, the two matrices @D_attack and @D_system are aligned, s.t. their rowIndices are equal.
 		
-		print("D_ATTACK: "+str(D_attack))
-		print("D_SYSTEM: "+str(D_system))
-		exit()
-		
+		print("System attack matrix: ")
+		self.PrintHostTacticMatrix(D_system, systemHostIndex)
+		print("Re-ordered tactic walk matrix: ")
+		self.PrintHostTacticMatrix(D_attack, attackHostIndex)
 		
 		#element-wise multiply the two matrices, aka hadamard product. Be careful with numpy: np.matrix '*' operator is inner-product; ndarray '*' operator means hadamard/elementwise
 		D_transition = D_attack * D_system
+		print("Stochasticize: "+str(D_transition))
+		D_transition = self._stochasticizeTacticMatrix(D_transition, aggregateThirdAxis=True)
 		
-		D_transition = self._stochasticizeMatrix(D_transition, aggregateThirdAxis=True)
 		print("TODO: fill hostMap, and also makes sure the graph topology in random_walk matches the netflow model (can these manual connections be factored out?)")
+		
+		for i in range(20):
+			print("Model power {}: {}".format(i,str(D_transition)))
+			D_transition = np.dot(D_transition, D_transition)
+		
+	def PrintHostTacticMatrix(self, matrix, hostIndex):
+		print("MATRIX {} x {} x {}".format(matrix.shape[0], matrix.shape[1], matrix.shape[2]))
+		print("HOSTS: {}".format(sorted(hostIndex.items(), key = lambda t: t[1])))
+		
+		for i in range(4):
+			print("TACTIC {}:\n{}".format(i, str(matrix[:,:,i])))
 		
 	def _aliasMatrixIndex(self, originalIndex, keyAliasMap):
 		"""
@@ -223,11 +255,14 @@ class ModelAnalyzer(object):
 		M_filtered = np.zeros(shape=(n,n,numTactics))
 		#build the filtered hostIndex
 		filteredIndex = dict((host, i) for i, host in enumerate(hostWhitelist))
-
+		
 		for host in hostWhitelist:
 			h_i = hostIndex[host]
 			h_f_i = filteredIndex[host]
-			M_filtered[h_f_i, h_f_i, :] = M[h_i, h_i, :]
+			for neighbor in hostWhitelist:
+				n_i = hostIndex[neighbor]
+				n_f_i = filteredIndex[neighbor]
+				M_filtered[h_f_i, n_f_i, :] = M[h_i, n_i, :]
 		
 		return M_filtered, filteredIndex
 
@@ -248,10 +283,13 @@ class ModelAnalyzer(object):
 		"""
 		M_new = np.zeros(shape=M.shape)
 		isThreeAxis = len(M.shape) == 3
+		
 		for name, index in currentIndex.items():
 			newIndex = targetIndex[name]
 			if isThreeAxis:
-				M_new[newIndex, newIndex, :] = M[index, index, :]
+				for peer, peerIndex in currentIndex.items():
+					newPeerIndex = targetIndex[peer]
+					M_new[newIndex, newPeerIndex, :] = M[index, peerIndex, :]
 			else:
 				M_new[newIndex, newIndex] = M[index,index]
 				
@@ -274,8 +312,11 @@ class ModelAnalyzer(object):
 		pass
 	"""
 				
-	def _stochasticizeMatrix(self, matrix, aggregateThirdAxis=True):
+	def _stochasticizeTacticMatrix(self, matrix, aggregateThirdAxis=True):
 		"""
+		*This is only for 3-axis matrices currently: axes 1/2 are hosts, 3rd axis are tactics.
+		@matrix: An n x n x #tactics matrix
+		
 		Utility for converting any real-valued, positive, square matrix to a stochastic matrix suitable as a transition model,
 		which permits it to be analyzed using markovian approaches and other good stuff.
 		
@@ -286,34 +327,76 @@ class ModelAnalyzer(object):
 		Returns: A copy of @matrix stochasticized
 		"""
 		
-		print("Stochasticize: "+str(matrix))
-		
 		if matrix.shape[0] != matrix.shape[1]:
-			print("ERROR matrix not square in _stochasticizeMatrix")
-			raise Exception("Non-square matrix passed to _stochasticizeMatrix")
+			print("ERROR matrix not square in _stochasticizeTacticMatrix")
+			raise Exception("Non-square matrix passed to _stochasticizeTacticMatrix")
 
-		hasNegativeEntries = len(matrix[matrix < 0])
+		hasNegativeEntries = len(matrix[matrix < 0]) > 0
 		if hasNegativeEntries:
-			print("ERROR matrix not positive in _stochasticizeMatrix")
-			raise Exception("Non-positive matrix passed to _stochasticizeMatrix")
+			print("ERROR matrix not positive in _stochasticizeTacticMatrix")
+			raise Exception("Non-positive matrix passed to _stochasticizeTacticMatrix")
 		
 		if aggregateThirdAxis and len(matrix.shape) < 3:
-			print("ERROR passed aggregateThirdAxis=True to _stochasticizeMatrix, but matrix of shape "+str(matrix.shape))
-			raise Exception("Passed aggregateThirdAxis=True to _stochasticizeMatrix, but matrix of shape "+str(matrix.shape))
+			print("ERROR passed aggregateThirdAxis=True to _stochasticizeTacticMatrix, but matrix of shape "+str(matrix.shape))
+			raise Exception("Passed aggregateThirdAxis=True to _stochasticizeTacticMatrix, but matrix of shape "+str(matrix.shape))
 		
 		if not aggregateThirdAxis:
 			print("ERROR aggregateThirdAxis=False, but not implemented yet")
 			raise Exception("aggregateThirdAxis=False not implemented")
 		else:
-			model = np.zeros(shape=(matrix.shape[0],matrix.shape[1]))
+			#just sum the matrix over its third axis, and then pass to the 2d stochasticize function
+			model = np.sum(matrix, axis=2)
+			model = self._stochasticizeTwoDimMatrix(model)
+			"""
+			model = np.zeros(shape=(matrix.shape[0],matrix.shape[1]), dtype=np.float)
 			for row in range(matrix.shape[0]):
 				#aggregate the row along the third/tactic axis
-				aggRow = np.sum(matrix[row,:,:], axis=1) #get the 2d row
+				aggRow = np.sum(matrix[row,:,:], axis=1) #gets the 2d row of 3d data, aggregated over all tactics (the third axis)
 				rowSum = np.sum(aggRow)
 				if rowSum <= 0:
-					print("ERROR rowSum="+str(rowSum))
-				model[row,:] = aggRow / rowSum
+					print("WARNING rowSum="+str(rowSum))
+					model[row,:] = 0.0
+				else:
+					model[row,:] = aggRow / rowSum
+			"""
 
+		return model
+		
+	def _stochasticizeTwoDimMatrix(self, matrix, uniformizeZeroRows=True, allowAbsorption=False):
+		"""
+		Given any n x n positive matrix, stochasticizes the entries by normalizing each row by its sum.
+		
+		@uniformizeZeroRows: If true, then rows of all zeroes will be set to uniform probabilities: row = 1 / len(row), where row is a vector
+		@allowAbsorption: An absorbing state transitions to itself with probability 1.0, hence its diagonal value will be 1.0.
+						This is problematic when calculating the stationary distribution, because the probability of such states tends to 1.0,
+						since all paths leading to it end there. If @allowAbsorption is false, then the row is set to the uniform probability
+						of transitioning to all other states, basically restarting the stochastic process from a random state.
+		"""
+		if matrix.shape[0] != matrix.shape[1]:
+			print("ERROR matrix not square in _stochasticizeTacticMatrix")
+			raise Exception("Non-square matrix passed to _stochasticizeTacticMatrix")
+
+		hasNegativeEntries = len(matrix[matrix < 0]) > 0
+		if hasNegativeEntries:
+			print("ERROR matrix not positive in _stochasticizeTwoDimMatrix")
+			raise Exception("Non-positive matrix passed to _stochasticizeTwoDimMatrix")
+			
+		model = np.zeros(shape=matrix.shape, dtype=np.float)
+		for i in range(matrix.shape[0]):
+			row = matrix[i,:]
+			rowSum = np.sum(row)
+			if rowSum <= 0:
+				print("WARNING rowSum="+str(rowSum))
+				if uniformizeZeroRows:
+					model[i,:] = 1.0 / float(matrix.shape[1])
+				else:
+					model[i,:] = 0.0
+			else:
+				model[i,:] = row / rowSum
+				
+			if not allowAbsorption and model[i,i] == 1.0:
+				model[i,:] = 1.0 / float(matrix.shape[1])
+		
 		return model
 		
 def main():

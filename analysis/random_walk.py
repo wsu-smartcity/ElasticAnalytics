@@ -118,6 +118,14 @@ class RandomWalkGenerator(object):
 		return d
 
 	def _generateWalk(self):
+		"""
+		Original walk script.
+		
+		NOTE: IF ANY CHANGES ARE MADE TO WALK SCRIPT, THEN BuildRandomWalkMatrix() AND ITS INTERNAL LOGIC WILL NEED TO
+		BE UPDATED AND RE-EVALUATED AS WELL, FOR CONSISTENCY. ALSO, CAPITAL LETTERS!!! Just kidding, but also
+		any changes here will make any previous walks.py output files obsolte, and those would likely need to be
+		regenerated also.
+		"""
 		### Init Graph ####
 		C = self._build_cyber_graph()
 		curr = "fw1"
@@ -215,7 +223,7 @@ class RandomWalkGenerator(object):
 		if hostWhitelist is not None:
 			print("Filtering walk matrix with whitelist: {}".format(hostWhitelist))
 			matrix, hostIndex = self._filterWalkMatrix(matrix, hostIndex, hostWhitelist)
-			
+
 		return matrix, hostIndex, tacticIndex
 
 	def _filterWalkMatrix(self, M, hostIndex, hostWhitelist):
@@ -238,22 +246,28 @@ class RandomWalkGenerator(object):
 		M_filtered = np.zeros(shape=(n,n,numTactics))
 		#build the filtered hostIndex
 		filteredIndex = dict((host, i) for i, host in enumerate(hostWhitelist))
-
+		
 		for host in hostWhitelist:
 			h_i = hostIndex[host]
 			h_f_i = filteredIndex[host]
-			M_filtered[h_f_i, h_f_i, :] = M[h_i, h_i, :]
+			
+			for neighbor in hostWhitelist:
+				n_i = hostIndex[neighbor]
+				n_f_i = filteredIndex[neighbor]
+				M_filtered[h_f_i, n_f_i, :] = M[h_i, n_i, :]
 		
 		return M_filtered, filteredIndex
 
 	def _buildMatrixFromWalks(self):
 		"""
 		Builds a transition matrix based on the walks stored in walks.py. No hosts are filtered.
+		The first and second axes of this matrix are simulated hosts, and the third axis are entries
+		containing the frequency of tactic transitions.
 		
 		1) Reflexive/diagonal elements represent intra-host events. These can be refined differently,
 		but a rough way is just to call these privilige escalation and execution.
 		2) Off-diagonal elements represent inter-host tactics, like lateral-movement. Some instances of discovery
-		should be there as well, but are TODO for now.
+		should be there as well, but are TODO's for now.
 		
 		The result of (1) and (2) is that the returned matrix is n x n x numtactics. The diagonal elements represent events/tactics on hosts,
 		whereas off diagonal elements represent tactics that involved a transition between hosts. Further, on the diagonal, the only counts
@@ -277,6 +291,8 @@ class RandomWalkGenerator(object):
 				if host not in hostIndex.keys():
 					hostIndex[host] = rowIndex
 					rowIndex += 1
+
+		#print("HOST INDEX: {}".format(hostIndex))
 		#build the matrix itself
 		n = len(hostIndex.keys())
 		numTactics = len(tacticIndex.keys())
@@ -295,10 +311,12 @@ class RandomWalkGenerator(object):
 						#intra host, so this is a diagonal element in the event matrix
 						M[host_i, host_i, tactic_i] += 1.0
 					elif tactic in ["lateral-movement"]:
-						if i < len(walk) - 1: #make sure we're not at end of walk, and have a next step
-							nextStep = walk[i+1]
-							dest_i = hostIndex[ nextStep["host"] ]
-							M[host_i, dest_i, tactic_i] += 1.0
+						if i > 0: #make sure we're not at start of walk, and have a previous step; for l.m. the walks were recorded as 'lateral-movement' via the previous host/step in the walk
+							prevStep = walk[i-1]
+							src_i = hostIndex[ prevStep["host"] ]
+							M[src_i, host_i, tactic_i] += 1.0
+						else:
+							print("Discarding lateral movement tactic step at end of walk... not an error, just making it known.")
 					else:
 						print("Tactic >{}< not found in _buildMatrixFromWalks".format(tactic))
 					

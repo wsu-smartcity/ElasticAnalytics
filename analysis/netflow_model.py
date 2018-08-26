@@ -170,7 +170,11 @@ class NetFlowModel(object):
 				prob += eventModel[event]
 			else:
 				print("WARN no event {} for host {}".format(event, vertex["name"]))
-		prob /= z
+				
+		if z > 0:
+			prob /= z
+		else:
+			print("WARN z<=0 (no events; okay for non-monitored hosts) in _getVertexEventProb for host {}".format(vertex["name"]))
 		
 		return prob
 
@@ -258,28 +262,36 @@ class NetFlowModel(object):
 		#first union all of the unique features to analyze, since there is significant overlap
 		for technique in featureModel.AttackTable[tactic]:
 			ports += technique.Ports
-			#eventIds += technique.WinlogEvents
+			eventIds += technique.WinlogEvents
 		#uniquify the events and ports, since there will often be repeats over all of the techniques for a given tactic
 		ports = list(set(ports))
-		#eventIds = list(set(eventIds))
+		eventIds = list(set(eventIds))
 		
-		print("PORTS: "+str(ports))
+		#print("PORTS: "+str(ports))
 		
 		#calculate the probability of the given features for all neighboring hosts in the netflow model
 		neighborProbs = []
 		for edge in self._graph.es.select(_source=vertex.index):
 			#get the probability of these port events per each destination host
-			host = self._graph.vs[edge.target]["name"]
+			host = self._graph.vs[edge.target]
+			hostname = host["name"]
 			portModel = edge["port"]["port"]
 			z = float(sum([val for val in portModel.values()]))
 			pPorts = float(sum([portModel[port] for port in ports if port in portModel.keys()]))
-			print("P PORTS: "+str(pPorts))
+			print("SUM PORTS FREQ: "+str(pPorts))
 			if z > 0:
 				pPorts = pPorts / z
-				neighborProbs.append( (host, pPorts) )
+				#neighborProbs.append( (hostname, pPorts) )
 			else:
 				print("WARNING z<=0 in _relationalTacticProb. prob/Z {} {}".format(pPorts, z))
-		
+
+			eventProb = self._getVertexEventProb(host, eventIds)
+			print("EVENT PROB: {}".format(eventProb))
+			#This is controversial and gray; takes the max of the two probabilities, assuming that if either event occurs, it is equivalent to the others.
+			#Recall that p(A or B) = p(A) + p(B) - p(A and B). The latter term is ill-defined in this context.
+			totalProb = max(eventProb,pPorts)
+			neighborProbs.append((hostname, totalProb))
+
 		return neighborProbs
 		
 	def _simpleTacticProb(self, vertex, featureModel, tactic, arcType="undirected"):
