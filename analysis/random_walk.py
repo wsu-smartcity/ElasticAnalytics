@@ -280,6 +280,7 @@ class RandomWalkGenerator(object):
 		
 		#only four are of interest currently: discovery, lateral movement, execution, and privilige escalation. These must match the spelling of these tactics as received from MITRE
 		tacticIndex = {"discovery" : 0, "lateral-movement" : 1 , "privilege-escalation" : 2, "execution" : 3}
+		relational_discovery_techniques = ["Network Service Scanning", "Network Share Discovery", "System Network Connections Discovery", "Remote System Discovery"]
 		
 		walks = self._getWalks(self._walkFile)
 		#build the host index, mapping host names to their row/col index in the matrix
@@ -310,19 +311,23 @@ class RandomWalkGenerator(object):
 					if tactic in ["discovery", "privilege-escalation", "execution"]:
 						#intra host, so this is a diagonal element in the event matrix
 						M[host_i, host_i, tactic_i] += 1.0
-					elif tactic in ["lateral-movement"]:
+					if tactic in ["lateral-movement", "discovery"]:
 						if i > 0: #make sure we're not at start of walk, and have a previous step; for l.m. the walks were recorded as 'lateral-movement' via the previous host/step in the walk
-							prevStep = walk[i-1]
-							src_i = hostIndex[ prevStep["host"] ]
-							M[src_i, host_i, tactic_i] += 1.0
+							if tactic == "lateral-movement":
+								prevStep = walk[i-1]
+								src_i = hostIndex[ prevStep["host"] ]
+								M[src_i, host_i, tactic_i] += 1.0
+							elif tactic == "discovery" and step["technique"] in relational_discovery_techniques: #only a subset of Discovery techniques are relational/transitional in nature (e.g. network scanning activity, service discovery, etc)
+								prevStep = walk[i-1]
+								src_i = hostIndex[ prevStep["host"] ]
+								M[src_i, host_i, tactic_i] += 1.0
 						else:
 							print("Discarding lateral movement tactic step at end of walk... not an error, just making it known.")
 					else:
 						print("Tactic >{}< not found in _buildMatrixFromWalks".format(tactic))
-					
 				else:
 					print("WARNING tactic >{}< not in tacticIndex. Likely not supported.".format(tactic))
-				
+
 		return M, hostIndex, tacticIndex
 
 	def _getWalks(self, walkPath):
