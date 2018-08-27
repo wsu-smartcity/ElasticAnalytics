@@ -158,7 +158,7 @@ class RandomWalkGenerator(object):
 				else:
 					update_state = 0
 					
-			#Privilige escalation
+			#Privilege escalation
 			if state[1]==1: 
 				tactic = "privilege-escalation"
 				if priv_esc ==0:
@@ -370,7 +370,7 @@ class RandomWalkGenerator(object):
 		while not success and retries < retryLimit:
 			try:
 				walk = self._generateWalk()
-				success = True
+				success = len(walk) > 0 #success if walk longer than zero
 			except:
 				traceback.print_exc()
 				print("Walk failed for reasons described in exception above; retrying...")
@@ -379,14 +379,17 @@ class RandomWalkGenerator(object):
 		return walk
 		
 def main():
-	whitelist = ["relay6", "relay1", "relay2", "gw", "fw1"]
+	#whitelist = ["relay6", "relay1", "relay2", "gw", "fw1"]
 	generator = RandomWalkGenerator(show=False)
-	#generator.GenerateKWalks(500)
+	generator.GenerateKWalks(1000, newWalks=True)
+	
+	"""
 	matrix, hostIndex, tacticIndex = generator.BuildRandomWalkMatrix(whitelist)
 	print(str(hostIndex))
 	print(str(tacticIndex))
 	print(str(matrix))
 	print(str(matrix.shape))
+	"""
 	
 if __name__ == "__main__":
 	main()

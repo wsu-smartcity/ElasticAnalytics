@@ -10,3 +10,4 @@ analysis/junk.json
 analysis/netflowModel.pickle
 analysis/network.png
 analysis/walks.py
+analysis/walks2.py
