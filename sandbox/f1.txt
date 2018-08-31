@@ -1,0 +1,174 @@
+http://192.168.0.91/app/kibana#/dev_tools/console?_g=()
+https://car.mitre.org/wiki/Main_Page
+https://people.orie.cornell.edu/sid/NewForLinking/StockholmSid.pdf
+http://www.ecs.umass.edu/ece/wolf/pubs/gis2007.pdf
+http://ids.cs.columbia.edu/sites/default/files/impact-syn.pdf
+https://pdfs.semanticscholar.org/2109/acebfd0a52c9d0046abf6efa164a968f23c6.pdf
+http://www.cs.columbia.edu/~jebara/papers/cucs-029-11.pdf
+
+GET netflow*/_search
+{
+  "aggs":{
+    "ip_edges":{
+      "terms":{
+        "field":"netflow.ipv4_dst_addr"
+      }
+      
+    }
+  }
+}
+
+See "interactions" / Adjacency Matrix api in elastic. This seems very useful for any graphical analytics.
+Remember: facets replaced by aggregates.
+
+
+GET netflow*/_search
+{
+  "aggs":{
+    "interactions":{
+      "ip_host_adjacency":{
+        "filters" : {
+          "source" : { "terms" : { "" : ["hillary", "sidney"] }},
+          "dest" : { "terms" : { "accounts" : ["donald", "mitt"] }}
+        }
+      }
+      
+    }
+  }
+}
+
+Group by field 1, 2, 3:
+	{
+	  "aggs": {
+		"agg1": {
+		  "terms": {
+			"field": "field1"
+		  },
+		  "aggs": {
+			"agg2": {
+			  "terms": {
+				"field": "field2"
+			  },
+			  "aggs": {
+				"agg3": {
+				  "terms": {
+					"field": "field3"
+				  }
+				}
+			  }          
+			}
+		  }
+		}
+	  }
+	}
+
+Ip edge-based graph query.
+GET netflow-v5-2017.10.11/_search
+{
+  "aggs": {
+    "dst_addr": {
+      "terms": {
+        "field": "netflow.ipv4_dst_addr"
+      },
+      "aggs": {
+        "src_addr": {
+          "terms": {
+            "field": "netflow.ipv4_src_addr"
+          }
+        }
+      }
+    }
+  }
+}
+	
+	
+
+
+
+http://192.168.0.91/app/kibana#/dev_tools/console?_g=()
+https://car.mitre.org/wiki/Main_Page
+https://people.orie.cornell.edu/sid/NewForLinking/StockholmSid.pdf
+http://www.ecs.umass.edu/ece/wolf/pubs/gis2007.pdf
+http://ids.cs.columbia.edu/sites/default/files/impact-syn.pdf
+https://pdfs.semanticscholar.org/2109/acebfd0a52c9d0046abf6efa164a968f23c6.pdf
+http://www.cs.columbia.edu/~jebara/papers/cucs-029-11.pdf
+
+GET netflow*/_search
+{
+  "aggs":{
+    "ip_edges":{
+      "terms":{
+        "field":"netflow.ipv4_dst_addr"
+      }
+      
+    }
+  }
+}
+
+See "interactions" / Adjacency Matrix api in elastic. This seems very useful for any graphical analytics.
+Remember: facets replaced by aggregates.
+
+
+GET netflow*/_search
+{
+  "aggs":{
+    "interactions":{
+      "ip_host_adjacency":{
+        "filters" : {
+          "source" : { "terms" : { "" : ["hillary", "sidney"] }},
+          "dest" : { "terms" : { "accounts" : ["donald", "mitt"] }}
+        }
+      }
+      
+    }
+  }
+}
+
+Group by field 1, 2, 3:
+	{
+	  "aggs": {
+		"agg1": {
+		  "terms": {
+			"field": "field1"
+		  },
+		  "aggs": {
+			"agg2": {
+			  "terms": {
+				"field": "field2"
+			  },
+			  "aggs": {
+				"agg3": {
+				  "terms": {
+					"field": "field3"
+				  }
+				}
+			  }          
+			}
+		  }
+		}
+	  }
+	}
+
+Ip edge-based graph query.
+GET netflow-v5-2017.10.11/_search
+{
+  "aggs": {
+    "dst_addr": {
+      "terms": {
+        "field": "netflow.ipv4_dst_addr"
+      },
+      "aggs": {
+        "src_addr": {
+          "terms": {
+            "field": "netflow.ipv4_src_addr"
+          }
+        }
+      }
+    }
+  }
+}
+	
+	
+
+
+

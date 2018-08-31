@@ -278,7 +278,7 @@ class RandomWalkGenerator(object):
 		[{'technique_id': 'attack-pattern--15dbf668-795c-41e6-8219-f0447c0e64ce', 'host': 'fw1', 'technique_name': 'Permission Groups Discovery', 'tactic': 'discovery', 'attack_path': "set(['fw1'])", 'technique_data_source': "[u'API monitoring', u'Process command-line parameters', u'Process monitoring']"}, {'technique_id': 'attack-pattern--9b99b83a-1aac-4e29-b975-b374950551a3', 'host': 'fw1', 'technique_name': 'Accessibility Features', 'tactic': 'privilege-escalation', 'attack_path': "set(['fw1'])", 'technique_data_source': "[u'Windows Registry', u'File monitoring', u'Process monitoring']"}, {'technique_id': 'attack-pattern--a257ed11-ff3b-4216-8c9d-3938ef57064c', 'host': 'sw1', 'technique_name': 'Pass the Ticket', 'tactic': 'lateral-movement', 'attack_path': "set(['sw1', 'fw1'])", 'technique_data_source': "[u'Authentication logs']"}, {'technique_id': 'attack-pattern--b17a1a56-e99c-403c-8948-561df0cffe81', 'host': 'sw1', 'technique_name': 'Valid Accounts', 'tactic': 'privilege-escalation', 'attack_path': "set(['sw1', 'fw1'])", 'technique_data_source': "[u'Authentication logs', u'Process monitoring']"}, {'technique_id': 'attack-pattern--241814ae-de3f-4656-b49e-f9a80764d4b7', 'host': 'sw1', 'technique_name': 'Security Software Discovery', 'tactic': 'discovery', 'attack_path': "set(['sw1', 'fw1'])", 'technique_data_source': "[u'File monitoring', u'Process command-line parameters', u'Process monitoring']"}, {'technique_id': 'attack-pattern--ffe742ed-9100-4686-9e00-c331da544787', 'host': 'eng', 'technique_name': 'Windows Admin Shares', 'tactic': 'lateral-movement', 'attack_path': "set(['sw1', 'fw1', 'eng'])", 'technique_data_source': "[u'Process use of network', u'Authentication logs', u'Process command-line parameters', u'Process monitoring']"}, {'technique_id': 'attack-pattern--3489cfc5-640f-4bb3-a103-9137b97de79f', 'host': 'eng', 'technique_name': 'Network Share Discovery', 'tactic': 'discovery', 'attack_path': "set(['sw1', 'fw1', 'eng'])", 'technique_data_source': "[u'Process Monitoring', u'Process command-line parameters', u'Network protocol analysis', u'Process use of network']"}, {'technique_id': 'attack-pattern--c3bce4f4-9795-46c6-976e-8676300bbc39', 'host': 'hmi', 'technique_name': 'Windows Remote Management', 'tactic': 'lateral-movement', 'attack_path': "set(['sw1', 'fw1', 'hmi', 'eng'])", 'technique_data_source': "[u'File monitoring', u'Authentication logs', u'Netflow/Enclave netflow', u'Process command-line parameters', u'Process monitoring']"}, {'technique_id': 'attack-pattern--4ae4f953-fe58-4cc8-a327-33257e30a830', 'host': 'hmi', 'technique_name': 'Application Window Discovery', 'tactic': 'discovery', 'attack_path': "set(['sw1', 'fw1', 'hmi', 'eng'])", 'technique_data_source': "[u'API monitoring', u'Process command-line parameters', u'Process monitoring']"}, {'technique_id': 'attack-pattern--8f4a33ec-8b1f-4b80-a2f6-642b2e479580', 'host': 'hmi', 'technique_name': 'Process Discovery', 'tactic': 'discovery', 'attack_path': "set(['sw1', 'fw1', 'hmi', 'eng'])", 'technique_data_source': "[u'Process command-line parameters', u'Process monitoring']"}, {'technique_id': 'attack-pattern--7c93aa74-4bc0-4a9e-90ea-f25f86301566', 'host': 'hmi', 'technique_name': 'Application Shimming', 'tactic': 'privilege-escalation', 'attack_path': "set(['sw1', 'fw1', 'hmi', 'eng'])", 'technique_data_source': "[u'Loaded DLLs', u'System calls', u'Windows Registry', u'Process Monitoring', u'Process command-line parameters']"}, {'technique_id': 'attack-pattern--62b8c999-dcc0-4755-bd69-09442d9359f5', 'host': 'hmi', 'technique_name': 'Rundll32', 'tactic': 'execution', 'attack_path': "set(['sw1', 'fw1', 'hmi', 'eng'])", 'technique_data_source': "[u'File monitoring', u'Binary file metadata', u'Process command-line parameters', u'Process monitoring']"}]
 		"""
 		
-		#only four are of interest currently: discovery, lateral movement, execution, and privilige escalation. These must match the spelling of these tactics as received from MITRE
+		#only four are of interest currently: discovery, lateral movement, execution, and privilege escalation. These must match the spelling of these tactics as received from MITRE
 		tacticIndex = {"discovery" : 0, "lateral-movement" : 1 , "privilege-escalation" : 2, "execution" : 3}
 		relational_discovery_techniques = ["Network Service Scanning", "Network Share Discovery", "System Network Connections Discovery", "Remote System Discovery"]
 		
@@ -313,18 +313,21 @@ class RandomWalkGenerator(object):
 						M[host_i, host_i, tactic_i] += 1.0
 					if tactic in ["lateral-movement", "discovery"]:
 						if i > 0: #make sure we're not at start of walk, and have a previous step; for l.m. the walks were recorded as 'lateral-movement' via the previous host/step in the walk
+							#lateral movement is a straightfoward case of counting transitions from last host to current host
 							if tactic == "lateral-movement":
 								prevStep = walk[i-1]
 								src_i = hostIndex[ prevStep["host"] ]
 								M[src_i, host_i, tactic_i] += 1.0
-							elif tactic == "discovery" and step["technique"] in relational_discovery_techniques: #only a subset of Discovery techniques are relational/transitional in nature (e.g. network scanning activity, service discovery, etc)
+								M[src_i, src_i, tactic_i] += 1.0
+							#only a subset of Discovery techniques are relational/transitional in nature (e.g. network scanning activity, service discovery, etc)
+							elif tactic == "discovery" and step["technique_name"] in relational_discovery_techniques:
 								prevStep = walk[i-1]
 								src_i = hostIndex[ prevStep["host"] ]
 								M[src_i, host_i, tactic_i] += 1.0
-						else:
-							print("Discarding lateral movement tactic step at end of walk... not an error, just making it known.")
-					else:
-						print("Tactic >{}< not found in _buildMatrixFromWalks".format(tactic))
+						#else:
+						#	print("Discarding lateral movement tactic step at begining of walk... not an error, just making it known.")
+					#else:
+					#	print("Tactic >{}< not found in _buildMatrixFromWalks".format(tactic))
 				else:
 					print("WARNING tactic >{}< not in tacticIndex. Likely not supported.".format(tactic))
 

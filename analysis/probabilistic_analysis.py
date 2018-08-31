@@ -345,7 +345,8 @@ class ModelAnalyzer(object):
 			raise Exception("aggregateThirdAxis=False not implemented")
 		else:
 			#just sum the matrix over its third axis, and then pass to the 2d stochasticize function
-			model = np.sum(matrix, axis=2)
+			#model = np.sum(matrix, axis=2)
+			model = matrix[:,:,1]
 			model = self._stochasticizeTwoDimMatrix(model)
 			"""
 			model = np.zeros(shape=(matrix.shape[0],matrix.shape[1]), dtype=np.float)
@@ -443,7 +444,6 @@ def main():
 	analyzer.AssignMitreTacticProbabilities()
 	netflowModel.Save("netflowModel.pickle")
 	netflowModel.PrintAttackModels()
-	
 	analyzer.AnalyzeStationaryAttackDistribution()
 	
 	
