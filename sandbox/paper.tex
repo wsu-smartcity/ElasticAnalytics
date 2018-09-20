@@ -1,0 +1,659 @@
+\documentclass[journal]{IEEEtran}
+
+\usepackage{booktabs} % For formal tables
+\usepackage{xcolor, colortbl}
+\usepackage{subcaption}
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+
+\definecolor{Gray}{gray}{0.9}
+
+\begin{document}
+
+\title{Continuous Security Monitoring (Draft)}
+\author{ Adam Hahn~\IEEEmembership{Member,~IEEE}, 	
+\thanks{DOE CREDC.}% <-this % stops a space
+}
+
+\maketitle
+
+\begin{abstract}
+XXXXXXXXX XXXXXXXXX XXXXXXXXX XXXXXXXXX XXXXXXXXX XXXXXXXXX 
+XXXXXXXXX XXXXXXXXX XXXXXXXXX XXXXXXXXX XXXXXXXXX XXXXXXXXX 
+XXXXXXXXX XXXXXXXXX XXXXXXXXX XXXXXXXXX XXXXXXXXX XXXXXXXXX 
+XXXXXXXXX XXXXXXXXX XXXXXXXXX XXXXXXXXX XXXXXXXXX XXXXXXXXX 
+XXXXXXXXX XXXXXXXXX XXXXXXXXX XXXXXXXXX XXXXXXXXX XXXXXXXXX 
+XXXXXXXXX XXXXXXXXX XXXXXXXXX XXXXXXXXX XXXXXXXXX XXXXXXXXX 
+.\footnote{This is an abstract footnote}
+\end{abstract}
+
+\section{Introduction}
+Monitoring system security is an increasingly critical task with growing system complexity and security risks. While there has been significant work in the area of intrusion detection, much of this work explores how various algorithms perform against datasets with known malicious and normal traffic or system events~\cite{4693640}. There remains insufficient work identifying the monitoring data sources or sensors that best identify potential attacks, as it is often unclear whether a particular security monitoring strategy is sufficient to identify an attack. Understanding the performance of an attack detection technology requires an analysis of available security event data and their mapping to various attack tactics and techniques. 
+
+A variety of data sources are currently available which can potentially useful for detecting attacks. Frequently, devices will monitoring network traffice, which can occure through network metadata (e.g., Netflows), tools that provide detailed network session and deep-packet monitroing (e.g., Bro), or signature-based analsysis (e.g., Snort). Within hosts, discrete log events are commonly used to provide indicators of attack, though process-level and filesystem events (e.g., sysmon) are often valuable to identify certain types of adversarial techniques. Each data sources provides varying amounts of information or events, but which provides poorly quantified benefits towards the detection of threats. Furthermore, many intrusion detection approaches are vulnerable to a base rate fallacy due to the large number of normal events and small number of actual attacks~\cite{Axelsson}. 
+
+
+
+While many security  standards \color{red} CITE \color{black} requires the detection of networks for security, it is typically unclear whether the monitoring strategy sufficiently supports the protection strategy, (i.e., that is will provide sufficient detection of threats, or introduce extraneous workload for the monitoring of security data). Understanding this requires evidence in the (i) completeness and effectiveness of sensor placement so that attacks are not missed, (ii) the ability to verify that the amount of data can be sufficiently processed to avoid false positives. While it has been traditionally difficult to evaluate the effectiveness of the monitoring strategies effectiveness against real-world attacks, recent efforts to clearly document  strategies observed by real-world adversary methods, such as the MITRE ATT\&CK \color{red} CITE\color{black}, provide a comprehensive taxonomy of attack techniques based on the analysis of many real-world APT tactics.
+
+\color{red}
+
+\begin{itemize} 
+	\item various monitoring data sources and different attack techniques/tactics ,
+	\item attack kill-chain, tactics, and techniques, multiple phases,
+	\item diamond model of detection.
+    \item centralized monitoring data storage an analysis
+\end{itemize}
+
+\color{black}
+
+
+
+
+This paper proposed a methodology to assess the coverage of a set of security monitoring data sources provide toward the ability to detect adversarial activity within a network. The approach utilizes a graph-based model of the system and the various security monitoring sensors deployed on the network and then maps those mechanisms to the various attack tactics and techniques defined within ATT\&CK. It then develops statisitcal models of the various data sources collected by the network to categorize events as either potentially malicious or benign, based on whether features from those events are associated with ATT\&CK techniques, while normalized systems scores are produced for each system based on each tactic's coverage. Finally, system-level coverage scores are produced to measure the network's ability to detect malicious behavior. The proposed technique is then evaluated on a model power system network implemented in the Smart City Testbed at WSU to demonstrate results from real-world SCADA software and devices.  
+
+
+The proposed metric could be integrated within security information and event management (SIEM) tools deployed at various organizations to assess the effectiveness of current technologies and to help engineers explores trade-offs in the placement of different monitoring strategies. Furthemore, the approach could be used to provide more formal evidence that an organization's security monitoring strategy complies with relevant security requirements and regulations. 
+
+
+\color{red} Power system substations have structural models (PURDUE MODEL...) \color{black}
+
+
+
+%Cyber assets in the bulk power system must follow the NERC CIP security standards which define substation security requirements to (i) monitoring systems for malware, (ii) collect audit logs, and (iii) detect malicious connections~\cite{nerccip:secmgmt}. However, these requirements cannot be effectively and consistently verified. [THIS REQUIREMENT CANNOT BE VERIFIED/AUDITED]. 
+
+%The development of a security monitoring strategy should require the deployment of various tools that can enable the detection of these various observables. However, monitoring tools have limitations on the set of observables they can detect. This introduces a question of what types of monitoring tools should be deployed, especially incorporating the cost to operate each. 
+
+
+\section{Related Work}
+There have been many previous efforts focusing on the detection of malicious behavior in networks. A variety of survey papers have been produced in various domains~\cite{4693640}, including those tailored to cyber-physical systems~\cite{Mitchell:2014:SID:2597757.2542049}. Furthermore, multiple efforts have explored the intrusion detection problem specifically within smart grid and control system networks~\cite{Lin:2013:ABS:2459976.2459982}. However, often these techniques cannot be deployed in production systems due to false alarms produced by base-rate fallacies~\cite{Axelsson}.
+
+While intrusion detection is popular research domain, a lesser focus has explored the identification of detection sensor placement within a network. Work in~\cite{Modelo-Howard2008}  has explored the use of Bayesian networks to identify sensor placement in a network, while in~\cite{6196965} the authors propose feature selection techniques necessary for IDS. \color{red} \cite{DBLP:journals/corr/MadboulyGB14} \color{black}  To complement this, researchers have also explored model to analyze and detect the propagation of attacks through a network. Work in~\cite{7794326} explores techniques to detect lateral detection within a network. Additionally, in~\cite{6847231} the authors propose technique to model attack propagation through a network. In~\cite{Pei:2016:HAS:2991079.2991122} the authors introduce models to analyze the ability of various log files and algorithms to support the detection of various recent attacks. The authors in~\cite{mining} proposed an entropy-based metric to detect anomalies in network flows. 
+
+Furthermore, industry efforts have explored models for both improving the understanding of attack methods and system modeling. The Kill-Chain model has been introduces as a abstract meta-model for understanding the various attack steps necessary to execute an attack~\cite{kill-chain}.  For example, CAPEC identifies various attack patterns that are commonly deployed by attackers~\cite{mitre:capec}, while the ATT\&CK framework has been introduced to identify the most reliable indicators of sophisticated attacks~\cite{mitre:attack}. Furthermore, work in \cite{diamondmodel} has identified a framework for modeling the modeling of events from an system monitoring perspective to emphasize the analysis of attacker objectives and capabilities.
+
+
+The Unfetter Project
+https://nsacyber.github.io/unfetter/
+
+\subsection{Monitoring Requirements and  Standards}
+The importance of system monitoring is documented by a variety of federal government and industry standards. For example, the following list identifies current requirements to implement security monitoring. 
+
+\begin{itemize}
+\item  NERC CIP-007-6 - System Security Management, 3.1: {\it Deploy method(s) to deter, detect, or prevent malicious code.}
+\item  NERC CIP-005-5 - Electronic Security Perimeter(s):  {\it 1.5 Have one or more methods for detecting known or suspected malicious communications for both inbound and outbound communications.}
+\item  NIST 800-53 R-4: SC-7 Boundary Protection: {\it  Monitors and controls communications at the external boundary of the system and at key internal boundaries within the system}
+\item NIST 800-53 R-4: SI-4 Information System Monitoring: {\it Monitors the information system to detect: 1. Attacks and indicators of potential attacks in accordance with ... organization-defined monitoring objectives; and Deploys monitoring devices: (i) strategically within the information system to collect organization-determined essential information; and (ii) at ad hoc locations within the system to track specific types of transactions of interest to the organization;}
+\end{itemize}
+
+While the previously identified security controls requires some mechanisms to detect malicious activity and perform system monitoring, their remains a question regarding what degree of monitoring is sufficient to ensure an adequate ability to detect malicious activity on the network. While the {\it SI-4} control recommends the strategic collection of data, currently this is a void of accepted techniques that can be used to ensure this objectives are adequately met. 
+
+
+%Base Rate Fallacy 
+%%"Unfortunately, there have been no experiments concerning these factors in the setting of computer security intrusion detection. There is, however, some research in the context of process automation and plant control, such as would be the case in a (nuclear) power station, paper mill, steel mill large ship, and so on [Rasmussen 1986; Wickens 1992; Nygren 1994; Deatherage 1972]. These studies seem to indicate that our required level of false alarms, 50\%, is a very conservative estimate. Most human operators will have completely lost faith in the device at that point, opting to treat every alarm with extreme skepticism, if one would be able to speak of a “treatment” at all. The intrusion detection system would most likely be completely ignored in a “civilian” setting. More research into this issue is clearly needed."
+
+%A Practical Approach to Modeling Uncertainty in Intrusion Analysis
+
+%V. Dutt, A. Young-Suk, N. Ben-Asher, C. & Gonzalez, Modeling the effects of base-rates on cyber threat detection performance. Proceedings of the 11th International Conference on Cognitive Modeling. Berlin, Germany (2012).
+
+%Approximation Algorithms for Determining Placement of Intrusion Detectors
+
+\cite{Collins:2008:LPN:1433006.1433025}
+
+
+\subsection{Adversarial Models}
+The increasing need to monitor networks and systems for malicious activity, along with the desire to share information on observed attacks has created a need for standardized models of cyber observables that are commonly associated with attacks. Examples of these include OpenIOC~\cite{openioc}, and Structured Threat Information eXpression (STIX)~\cite{stix}. Furthermore,  MITRE's Adversarial Tactics, Techniques and Common Knowledge (ATT\&CK) provides a taxonomy of commonly observed adversarial tactics and techniques based on a review of many different advanced persistent threat groups. Within ATT\&CK, {\it techniques} represent the actual technical mechanism an attacker uses to compromise a network (e.g. Pass the Hash, SSH Hijacking,	DLL Search Order Hijacking). Each technique is also categorized into a one or more {\it tactics}, which represent the phase of the attack where that technique is commonly observed. Examples of tactics include Lateral Movement, Privilege Escalation, and Discovery. In addition to ATT\&CK, MITRE has also introduced the Cyber Analytics Repository (CAR), which maps various ATT\&CK techniques to {\it analytics} that can be used to detect that event. The CAR analytics define the data necessary to detect that technique, along with specific features or code necessary to assist with the detection. 
+
+This work will utilize the ATT\&CK taxonomy to explore the set of potential attack sequences that could potentially target a network, while CAR will be used to map the various attacker techniques to specific data sources and features that can be used to detect them. 
+
+
+%\begin{table*}[]
+%\centering
+%\caption{My caption}
+%\label{my-label}
+%\begin{tabular}{l|l|l|l|l|l|l|l|l|l}
+%\cline{2-9}
+%                                                          & \multicolumn{2}{l|}{\cellcolor[HTML]{EFEFEF}{\color[HTML]{333333} Network}} & \multicolumn{2}{l|}{\cellcolor[HTML]{EFEFEF}{\color[HTML]{333333} Process}} & \multicolumn{2}{l|}{\cellcolor[HTML]{EFEFEF}{\color[HTML]{333333} File/Reg}} & \multicolumn{2}{l|}{\cellcolor[HTML]{EFEFEF}{\color[HTML]{333333} Auth}} &  \\ \cline{1-9}
+%\multicolumn{1}{|l|}{\cellcolor[HTML]{EFEFEF}Mechanisms}  & \cellcolor[HTML]{EFEFEF}Flow,       & \cellcolor[HTML]{EFEFEF}Payload       & \cellcolor[HTML]{EFEFEF}Execution         & \cellcolor[HTML]{EFEFEF}        & \cellcolor[HTML]{EFEFEF}Read         & \cellcolor[HTML]{EFEFEF}Write         & \cellcolor[HTML]{EFEFEF}Succ        & \cellcolor[HTML]{EFEFEF}Fail       &  \\ \cline{1-9}
+%\multicolumn{1}{|l|}{\cellcolor[HTML]{EFEFEF}Netflows}    &                                     &                             %          &                                           &                                 &                                     % &                                       &                                     &                                    &  \\ %\cline{1-9}
+%\multicolumn{1}{|l|}{\cellcolor[HTML]{EFEFEF}Pkt Capture} &                                     &                             %          &                                           &                                 &                                     % &                                       &                                     &                                    &  \\ \cline{1-9}
+%\multicolumn{1}{|l|}{\cellcolor[HTML]{EFEFEF}IDS}         &                                     &                             %          &                                           &                                 &                                     % &                                       &                                     &                                    &  \\ %\cline{1-9}
+%\multicolumn{1}{|l|}{\cellcolor[HTML]{EFEFEF}AV}          &                                     &                             %          &                                           &                                 &                                     % &                                       &                                     &                                    &  \\ %\cline{1-9}
+%\multicolumn{1}{|l|}{\cellcolor[HTML]{EFEFEF}App Log}     &                                     &                             %          &                                           &                                 &                                     % &                                       &                                     &                                    &  \\ %\cline{1-9}
+%\end{tabular}
+%\end{table*}
+
+
+%\color{gray}
+%\subsection{STIX}
+%For example, the following list includes a set of cyber observables defined in STIX version 2.0%
+%\begin{table}
+%\centering
+%\caption{My caption}
+%\label{my-label}
+%\begin{tabular}{lllll}
+%Artifact Name Obj & Email Message & Software Obj     \\  
+%AS Object         & File,Obj      & User Account Obj \\ 
+%Directory,Obj     & Mutex,Obj     & Windows Obj      \\ 
+%Email Address     & Process Obj   & X509 Obj         \\      
+%Network Traffic   & IPv4/IPv6     & MAC Addr         \\
+%\end{tabular}
+%\end{table}
+%Furthermore, a sophisticated attack typically includes a series of steps in order to gain information about the attack target, compromise cyber assets, and then manipulate the system. This sequence of steps is commonly defined as a "kill-chain", which can also be modeled in STIX, where each step includes its own set of cyber observables (AS DESCRIBED BELOW). 
+%In order to be consistent with the STIX framework, we define an attack (kill-chain) is defined as a set of stages $A=\{S\}$, such that each $s_{i} =\{E\}$ as includes a set of observable events. 
+\color{black}
+
+
+
+\begin{table*}[]
+\centering
+\caption{Lateral Movement/Discovery Observables}
+\label{tab:latdisc-mech}
+\begin{tabular}{|l|l|l|l|}
+\hline
+\rowcolor[HTML]{EFEFEF} 
+\textbf{Lateral Movement}          & \textbf{Netflow} 				&  \textbf{Bro}  & \textbf{Win Log} \\\hline
+
+AppleScript						   & Dport $\in$ \{T:22\} 			& Same	 		& --- \\\hline
+Application Deployment Software    & Dport $\in$ \{T:80.443,8443,8082\} & Same		& ---\\\hline
+Distributed Component Object Model & Dport $\in$ \{T:135,138,139,445\}  & SMB MONITOR & Event\_Num $\in$ \{528,552,4648\} \\\hline
+Exploitation of Remote Services    & Any Conn						& Any Conn		& --- \\\hline
+Logon Scripts                      & Dport $\in$ \{T:445,139\}  	& SMB MONITOR 	& Event\_Num $\in$ \{528,552\} \\\hline
+Pass the Hash                      & Dport $\in$ \{T:445,139\}      & SMB MONITOR 	& Event\_Num $\in$ \{4624\} \\\hline
+Pass the Ticket                    & Dport $\in$ \{T/U:464,389\}    & ??? 			& ??? \\\hline
+Remote Desktop Protocol            & Dport $\in$ \{T:3389\} 		& Same			& Event\_Num $\in$ \{1149\} \\\hline
+Remote File Copy                   & Dport $\in$ \{T:20,21,22,3389,445\} &  		& Event\_Num $\in$ \{1149\} \\\hline
+*Replication Through Removable Media & ---					  		& ---			& --- \\\hline
+SSH Hijacking                      & Dport $\in$ \{T:22\} 			& Same   		& --- \\\hline
+Shared Webroot                     & Dport $\in$ \{T:80,443\}      	& Same    		& --- \\\hline
+Taint Shared Content               & Dport $\in$ \{T:135,138,139,445\}  & Same		& \\\hline
+Third Party Software               & Dport $\in$ \{T:80,443,1433,5900\} & Same		& --- \\\hline
+Windows Admin Shares               & Dport $\in$ \{T445,T139\}       & SMB MONITOR  & Event\_Num $\in$ \{528,552,4648\} \\\hline
+Windows Remote Management          & Dport $\in$ \{T445,T139\}       & SMB MONITOR  &Event\_Num $\in$ \{528,552,4648\} \\\hline
+
+\rowcolor[HTML]{EFEFEF} 
+\textbf{Discovery}		          & \textbf{Netflow} 	&  \textbf{Bro} & \textbf{Win Log} \\\hline
+Account Discovery         	  	  & ---       			& 	--- 			&  --- \\\hline                 
+Application Window Discovery	  & ---       			& 	--- 			&  --- \\\hline                 
+Browser Bookmark Discovery		  & ---       			& 	--- 			&  --- \\\hline                 
+File and Directory Discovery	  & ---       			& 	--- 			&  --- \\\hline                 
+Network Service Scanning		  & $n$ hosts/ports $\in$ time $t$ & Scan event?			&   --- \\\hline
+Network Share Discovery			  & Dport $\in$ \{T445,T139\}       	& SMB MONITOR & --- \\\hline
+Password Policy Discovery		  & ---       			& 	--- 			&  --- \\\hline                           
+Peripheral Device Discovery       & ---       			& 	--- 			&  --- \\\hline  
+Permission Groups Discovery		  & ---       			& 	--- 			&  --- \\\hline                            
+Process Discovery                 & ---       			& 	--- 			&  --- \\\hline  
+Query Registry					  & ---       			& 	--- 			&  4656? \\\hline                 
+Remote System Discovery 	      & Any Conn			   & 	Any Conn				& ---   \\\hline       
+Security Software Discovery       & ---       			& 	--- 			& 4656?  \\\hline       
+System Information Discovery      & ---       			& 	--- 			&  --- \\\hline          
+System Network Configuration Discovery & ---       			& 	--- 			&  --- \\\hline       
+System Network Connections Discovery   & ---       			& 	--- 			&  --- \\\hline        
+System Owner/User Discovery       & ---       			& 	--- 			&  --- \\\hline         
+System Service Discovery          & ---       			& 	--- 			&  --- \\\hline           
+System Time Discovery             & ---       			& 	--- 			&  --- \\\hline                 
+\end{tabular}
+\end{table*}
+
+
+\begin{table}
+\centering
+\caption{Execution Observability}
+\label{tab:exec-mech}
+\begin{tabular}{|l|l|}
+\hline
+\rowcolor[HTML]{EFEFEF} 
+\textbf{Execution}		          & \textbf{WinLog} 	\\\hline
+AppleScript						  & ---    				\\\hline
+CMSTP						      &       			\\\hline
+Command Line Interface			  & ---       			\\\hline
+Control Panel Items				  & ---     			\\\hline
+Dynamic Data Exchange			  & ---       			\\\hline
+Execution through API			  & ---      			\\\hline
+Execution through Module Load	  & ---    				\\\hline
+Exploitation for Client Exec	  & ---      			\\\hline
+Graphical User Interface		  & ---       			\\\hline
+InstallUtil						  & ---     			\\\hline
+LSASS Driver					  & ---       			\\\hline
+Launchctl						  & ---      			\\\hline
+Local Job Scheduling	          & ---    				\\\hline
+Mshta					          & ---      			\\\hline
+PowerShell				          & ---       			\\\hline
+Regsvsc/Regasm			          & ---     			\\\hline
+Regsvr32				          & ---       			\\\hline
+Rundll32				          & ---      			\\\hline	
+Scheduled Task                    & ---    				\\\hline
+Scripting       				  & ---      			\\\hline
+Service Execution       		  & ---       			\\\hline
+Signed Binary Proxy Exec   	      & ---     			\\\hline
+Source						      & ---       			\\\hline
+Space after Filename			  & ---      			\\\hline
+Third-party Software			  & ---      			\\\hline	
+Trap                              & ---    				\\\hline
+Trusted Developer Utilities		  & ---      			\\\hline
+User Execution					  & ---       			\\\hline
+Windows Mgmt. Instrumentation	  & ---     			\\\hline
+Windows Remote Management		  & ---       			\\\hline
+\end{tabular}
+\end{table}
+
+
+\begin{table}
+\centering
+\caption{Privilege Escalation Observables ($t_{i}$)}
+\label{tab:priv-mech}
+\begin{tabular}{|l|l|}
+\hline
+\rowcolor[HTML]{EFEFEF} 
+\textbf{Privilege Escalation}     & \textbf{WinLog}  \\\hline
+Access Token Manipulation		  & ---    				\\\hline
+Accessibility Features			  & 4657?      			\\\hline
+AppCert DLLs					  & 4657?      			\\\hline
+AppInit DLLs					  & 4657?      			\\\hline
+Application Shimming			  & 4657?       			\\\hline
+Bypass User Account Control		  & 4657?      			\\\hline						          
+DLL Search Order Hijacking		  & ---      			\\\hline
+Dylib Hijacking	(A)				  & ---       			\\\hline
+Exploitation for Privilege Escalation & ???     			\\\hline
+Extra Window Memory Injection	  & ---       			\\\hline
+File System Permissions Weakness  & ---      			\\\hline
+Hooking						      & ---       			\\\hline
+Image File Execution Options Injection & 4657     			\\\hline
+Launch Daemon					  & ???       			\\\hline
+	New Service					  & ???      			\\\hline
+Path Interception				  & ---       			\\\hline
+Plist Modification (A)			  & ---     			\\\hline
+Port Monitors					  & 4657?      			\\\hline
+Process Injection				  & ???      			\\\hline	
+SID-History Injection             & 4765,4766  			\\\hline
+Scheduled Task                    & ???      			\\\hline	                                  
+Service Registry Perms Weakness   & 4657      			\\\hline
+Setuid and Setgid (U)			  & ---       			\\\hline
+Startup Items (A)				  & ---     			\\\hline
+Sudo (U)					      & ---       			\\\hline
+Sudo Caching (U)				  & ---      			\\\hline	
+Valid Accounts					  & 528,552,4648  		\\\hline
+Web Shell					      & ---       			\\\hline
+\end{tabular}
+\end{table}
+
+
+
+\begin{table}
+\centering
+\caption{Ukraine 2015 Attack Event Sequences \color{red}Cybox Events\color{black}}
+\label{tab:ukraine}
+\begin{tabular}{| p{1cm} p{1.3cm} ll |}
+\rowcolor{Gray}\hline
+Stage 			 &  Step  				&  Events                  & Observable \\\hline
+                 &  VPN Auth            & N: Auth Flow (1)         & NetDev: Flow (1)   \\
+                 &                      &                          & NIDS: Auth Event (1)   \\
+                 &                      &                          & VPN: Auth Log (1)  \\\cline{2-4}
+                 
+Gain             &  VPN 	         	& N: Established Flow (1)  & NetDev: Flow (1)    \\
+Access           &  Session             & N: Auth Flow (1)         & NIDS: VPN Session (1)   \\
+                 &                      &                          & VPN: Session Log (1)  \\\cline{2-4}   
+                 
+				 & HMI Auth  			& N: Established Flow (1)  & NetDev: Flow (1)      \\
+                 &                      &                          & NIDS: Auth Event (1)   \\
+                 &                      &                          & HMI: Auth Log (1)      \\\cline{2-4}
+ 
+				 & HMI Conn  			& N: Established Flow (1)  & NetDev: Flow (1)       \\
+                 &                      &                          & NIDS: Conn Event (1)   \\
+                 &                      &                          & HMI: Conn Log (1)      \\\hline
+           
+Install          & BE 3 install         & S: Add File (1)          & HMI: File monitor      \\
+                 &                      & S: New Processes (1)     & HMI: Process monitor   \\
+                 &                      & 						   & HMI: Win Registry      \\
+                 &                      & 						   & HMI: Win Event Log     \\\hline
+
+Maintain         & Hijack       		& S: RDP Session (1)       & NetDev: Flow (1)       \\
+				 & HMI/ RAT             & N: RDP Session (1)       & HMI: Net Activity   \\
+				 &                      & N: RDP Session (1)       & HMI: Process monitor    \\
+				 &                      & N: RDP Session (1)       & .....   \\\hline
+                 
+                 
+Attack           & Send Commands        & N: Scada Session (10)    & NetDev: Flow (1)        \\
+                 &                      &                          & NIDS: Conn Event (1)   \\\hline
+
+                 & Serial-to-Eth  		& N: Flows to devices (10) &  Router  \\
+                 & Firmware Update      &                    \\\hline                   
+\end{tabular}
+\end{table}
+
+\section{System Monitoring Model}
+This system can be abstractly defined as a graph $G = (S, L)$, where $S$ is the set of systems, and $L$ the set of communication links connecting these together. Security mechanisms can be applied to the various systems to help monitor the network. There is a variety of potential security monitoring mechanisms that can monitor either the network communications or the operation of the systems.  This section will explore a set of common security monitoring techniques that can be deployed in many systems. While the deployment of a monitoring technique is often dependent on the base system, as some device manufactures provide limitations to adding unsupported features, for example, embedded systems may not provide a user with access to the base OS to install or configure a service. 
+
+\begin{itemize}
+\item OS Type: $O(s) \in \{win,unix,osx\}$
+\item Services: $V(s)$ 
+\item Events: $E(s) = \langle e_{1}...e_{n} \rangle$, $e_{i} = \langle ts, p, f\rangle$
+\item Flows: $F(s) = \langle Proto, Path \rangle$, $path = \langle s_{s}, s_{1}, ..., s_{d} \rangle$
+\item Routes: $R(s) = \langle Proto, S \rangle$ 
+\end{itemize}
+
+$E$ represents the total number of events collected in from all systems. For each event e, it includes a timestamp ($ts$), type ($p \in  \{Netflows, IDS, System Logs, and\ Process Monitoring\}$), and features ($f_{p,1}, ... f_{p,n}$) which are specific to that types. Furthermore, $R(s)$ defines a set of routes, consists of a set of hosts ($S$) and protocols ($Proto$) that can be accessed from that system. 
+
+\subsection{Monitoring  Strategy Model}
+This section defines monitoring strategy as the the mapping $O: S(G) \rightarrow M$, which maps a set of potential monitoring techniques $M = (Netflows, IDS, System Logs, and\ Process Monitoring)$ to each node ($S$) in the network.  This mapping therefore represents the total monitoring coverage of the network. While each monitoring technique provides insight to only a limited set of potential attacker behavior, the following section will identify that data is collected from each technique. 
+
+{\it Netflows}: We explore network monitoring by examining both netflow records and packet payload. For netflow records, we assume a switch or router is recording network flow records (e.g., Cisco NetFlow, IPFIX), which include at least the following set of records: (i) timestamp, (ii) source IP, (iii) destination IP, (iv) source port number, (v) destination port number, (vi)  protocol, and (vii) the size of the session (i.e. kB). A unique flow record is produced for every new communication observed on the network. While the flow records provide a strong insight into network activity, they provide little information on the data payload of the network. 
+
+{\it Network IDS}: In additional the flow records, it is also important to observe the payloads associated with each communication. Some IDS platforms perform rule-base matching (e.g., Snort), and therefore, can only flag of traffic is observed matching some previously defined rule designed to model known malicious activity (e.g., software exploits, network spoofing), however, there is often challenges ensuring the rules are available before an attack is executed on the network. However, other IDS platforms (e.g., Bro) will parse an application-specific  connection log for all configured protocols. Therefore, the this provides a more complete log of payload activity, as opposed to only notification of specific rule violations of network traffic. 
+
+{\it System Event Logs}: In addition to the network events, various system events can also be recorded to provide indication of an attacks. For example, most operating systems and applications provide some degree of audit monitoring of events, such as Syslog in Unix-based OS and Windows Event Viewer. These commonly identify security related OS or application events, such as authentication failures and successes, changes to system settings, the execution state of system services or edits to certain system configurations,  While system maintain a wide array of security events, this paper will only focus on a small number of events that are known indicators of malicious system activity, and new process creation. 
+
+Each of the previously defined monitoring techniques can be used to identify only a limited set of potential observables. Therefore, being able to monitor all of the identified events requires that a variety of monitoring techniques be deployed in an environment. 
+
+
+\section{Attack Model}
+A cyber attacks can vary widely in complexity and the techniques used to compromise and manipulate various targets. An attack model, $A$, will be developed to help analyze the observability of various attack methods. First, its assumed an attack targets a set of hosts $H_{a}$ that have degraded confidentiality, integrity, or availability. To represent the propagation of the attack through a network, $F_{a}$ is the set of network flows representing the malicious communications between the hosts in $H_{a}$ that have been used to support the propagation of the attack along with any attack objectives (e.g., malicious SCADA messages). Furthermore, the set $H_{f}$ is the set of network routers and switches that have not been manipulated by the attack, but are used to support the sending of the flows in $F_{a}$. Therefore the total hosts involved in the attack are represented by the set $H = H_{a} \cup H_{f}$.  The attacker will also perform a number of different attack techniques  across the hosts in $H_{a}$ using e malicious network flows in $F_{a}$. These techniques are defined with the various tactics within ATT\&CK. Therefore, the attack includes a set of associated techniques, $Tech(A) = (e_{1,t} ... e_{n,t})$, where $t$ is the timestamp for that event. 
+
+\begin{itemize}
+\item $T(e)$ = set of techniques targeting host $e$
+\item $|T|$ - total \# of techniques
+\end{itemize}
+
+
+\color{red} INSERT SOME EVALUATION RUNS... \color{black}
+
+
+
+
+\subsection{ATT\&CK Technique Mapping}
+
+\color{red} CLARIFY EVENTS AND FEATURES.... \color{black}
+
+
+To identify whether the various monitoring techniques can adequately detect attacks, we define a mapping for the various techniques defined within ATT\&CK and the various monitoring mechanisms identified in this work. For each of the identified monitoring source we explore what potential features within the that source can be used to identify a potential attack. While ATT\&CK include a large number of tactics, we explore a minimal set, as identified in the \color{red} ATTACK MODEL SECTION \color{black}. Tables~\ref{tab:latdisc-mech}, \ref{tab:priv-mech}, and \ref{tab:exec-mech} identify the the attack techniques associate with the Discovery, Lateral Movement, Privilege Escalation, and Execution. It also identifies the event features from various monitoring data sources (Netflow, Bro, and Windows logs).  Each element in the table details event features collected by that monitoring source that would enable the detection of this techniques. 
+
+{\it Netflow}: While Netflow records have a number of available features, the destination ($Dport$) port of a connection is primarily used across many of the techniques since many are related to specific services. Therefore, for any techniques with the $Dport$ specified by port number states that a the netflow detection will consider any communication with that target port a possible occurrence of that technique. While most techniques are associated with specific protocols, Exploitation of Remote Services could occur on any protocol, and therefore cannot be more granularly assigned. \color{red} Flow size? \color{black}
+
+\color{red} {\it Bro}: (i) can detect all sessions same as NF, (ii) more detailed protocols... \color{black}
+
+{\it Event Logs}: In addition to network indicators, system logs could also be used to detect a variety of Lateral Movement events, specifically if the technique is associated with application protocols with known correlated event logs. Examples include connections of SMB/DCOM, and Windows authentication events. Therefore, these events have the associated Windows Event Log identified ($Event\_Num$) specified for each technique.
+
+
+
+
+
+
+
+\section{Coverage Analysis}
+As the previous section identified models for both attacks and networks, this section will explore the design of monitoring coverage analysis methods to determine whether a proposed set of monitoring techniques can adequately detect a network attack. Evaluating whether an attack technique can adequately detect a malicious activity depends on a number of factors, including (i) whether a sensor is deployed that can be capable of detecting the event, and (ii) the accuracy of the sensor to detecting that events. While the former is a simple binary decision, the latter requires some level of statistical analysis to determine the degree to which that sensor results in false-positives. Furthermore, as identified in Section XYZ, attacks will likely perform a sequence of techniques across a wide array of devices, and while it may not be feasible to assume that any monitoring strategy can detect every technique within an attack sequence, at minimum it should demonstrate the ability to reliably detect a subset of techniques within any possible sequence. 
+
+%{\it False Positives Rate:} To address the problem with false positives, we develop a statistical model of the various features detected by the monitoring strategy. For each feature, $i$, we develop a discrete probability distribution $F_{i}(X)$ for all $X$ in the set of potential values for that feature and $F_{i}(x)$ represents probability the that event occurring. We assumed that the network is monitored for time $T$, all sensors have collected all data from the point, and not attacks have been observed on the network. Then the probability of some event $e$ providing a false positive for some attack observable $t_{o}$ will be $F_{i}(e=t_{o})$. \color{red}Furthermore, if we assume events arrive at the rate $\lambda_{i}$,\color{black} the probability of that observable providing a false-positive at time $t$ is $Pr_{i}(e,t=false)=Poisson(t, \lambda) \times F_{i}(e=t_{o})$. 
+
+Therefore, to evaluate the effectiveness of a monitoring strategy \color{red}$M$\color{black}, we will evaluate its effectiveness against a set of randomize attack sequences. The sequences will consist of a set of tactic and techniques defined by the MITRE ATT\&CK taxonomy. The attack sequences will all start from the remote system and then progress to the system within the network which can impact grid operations. The attack techniques will be generated as a random walk through the network, where each path, tactic, and technique will be randomly generated. For each attack sequence, 
+\color{red}$M$\color{black} will be evaluated based on the information theoretic metrics \color{red}(Section XYZ)\color{black} regarding that attack sequence's information gain with regards to the previously collected monitoring data. Then, to evaluate the overall monitoring coverage, we  generate a large number of random walks and then evaluate the coverage of each walk. The resulting effectiveness of \color{red}$M$\color{black} will then be evaluated based on \color{red} harmonic mean \color{black} and the \color{red} MINIMAL SCORES \color{black} of the generated attack sequence. 
+
+
+
+\subsection{Statistical Models}
+
+
+\begin{figure}
+  \caption{Attack Tactic Sequence Markov Chain}
+  \centering
+  \includegraphics[width=0.4\textwidth]{mm}
+  \label{markov}
+\end{figure}
+
+\color{red}
+Based on the MITRE ATT\&CK framework, two data distributions can be defined: $D_{tactic}$, the distribution of techniques and tactics an arbitrary attacker would execute, and $D_{system}$, the behavioral distribution of regular system operations. $D_{tactic}$ is represented by the Markov chain in figure 1, structuring valid transitions between the subset of MITRE ATT\&CK tactics shown, such that this model could generate any valid sequence of attacker techniques. The parameters of this attacker behavior model could be determined empirically; instead, we defined all transitions on this model as uniformly distributed over valid transitions, which is a valid maximum-entropy model of attacker behavior in the absence of data. $D_{system}$ is a model of regular system behavior described by monitoring data including all cyber events: normal, outlier, anomalous, and attack events.
+
+As a model of network activity, the high-dimensionality and temporal nature of $D_{system}$ requires feature engineering, an open research topic. In this work, we represent $D_{system}$ via a simple, stationary factorized conditional probability distribution $P_{cpd}$ over hosts and network links for a variety of cyber event features: port usage, system event ids, flow volumes, and so forth. For example, the probability of two hosts with ip addresses $x$ and $y$ communicating over port 80: $p(src=x,dest=y,port=80|D_{system},\theta)$, where $\theta$ represents the assumptions about how such a probability is structured. This feature could be defined as a Poisson distribution parameterized by the average rate of port 80 traffic between these hosts, or it might be defined by communication over port 80 given all other ports and their flow frequency for this directed pair of hosts, or even weighted ensembles of similar features. A properly structured $P_{cpd}$ forms an acyclic, directed Bayesian network. These models are common in fields such as medical diagnosis [Warner, 2012], since they can be engineered and queried to evaluate the probability of specific events; in our case, structured cyber events.
+
+For our purposes, $P_{cpd}$ simply provides a model for evaluating the local probability of MITRE ATT\&CK technique features at every host (node) and connection (edge) in the network, thereby assigning to each technique its probability within regular system data. We assume, per the Unfetter Analytic platform, that every technique $t_{k}$ possesses a set of features $\mathbf{f_{t_{k}}}=\{f_{winlog},f_{netflow},f_{pcap},...\}$, and $P_{cpd}$ is constructed to provide a probabilistic representation by which to locally evaluate $P_{cpd}(\mathbf{f_{t_{k}}})$ for every host and link. Notably this value does not reflect the probability of any technique within regular system behavior, but rather the probability of its observable features, which may overlap with normal system behavior. Hence the goal is to minimize this value, since it represents the degree of system ‘camouflage’ surrounding the behavioral features of specific techniques.
+
+\color{black}
+
+\subsection{Coverage Metric}
+\color{red}
+
+As described, $D_{tactic}$ models expected attacker actions, while $D_{system}$ and $P_{cpd}$ provide an empirical probabilistic model for observing specific events. Hidden Markov models (see Rabiner, 1989) provide a canonical view of these models, where $D_{attack}$ represents the ‘hidden’ attacker transition model, and $P_{cpd}$ models the emission probability of features over all host$\times$tactic states. The distinction is that the structure and parameters of the hidden state model $D_{attack}$ are assumed to form a uniform distribution over possible attacker actions.
+
+Deriving an expectation over adversarial tactics on a system entails generating many attack sequences from $D_{attack}$ and re-playing these on a system model $G_{system}$ to track tactic frequencies. This gives an $h\times h\times t$ frequency matrix $F_{tactic}$, whose entries $(h_{i},h_{j},t_{k} )$ represent the frequency of tactic $t_{k}$ from host $h_{i}$ to host $h_{j}$, where $h$ is the number of hosts and $t$ is the number of tactics. The diagonal elements of $F$ represent on-host tactics, such as privilege escalation or execution, whereas off-diagonal elements represent relational tactics involving two hosts, such as lateral movement or network discovery. The third axis of $F_{tactic}$ simply preserves individual tactic frequencies. Overall, this simulation combines $D_{attack}$ with actual system properties $G_{system}$ to estimate the flow of attack information throughout the complete network.
+
+For a fully-connected network (every host connecting to every host) and uniform random starting points, the tactic expectations derived from this simulation would simply converge to the stationary distribution of $D_{attack}$. However, the system properties of $G_{system}$ impose structural conditions to validate tactic events according to link structure, whether or not a particular tactic is reasonable on a host, or other system knowledge. Hence, $G_{system}$ imposes system-consistency constraints on walk generation, such that the output $F_{tactic}$ approximates the distribution of $D_{attack}$ conditioned to a specific network.
+
+An expected value of tactic risk can then be calculated by evaluating $e_{risk}[i,j,k] = P_{cpd}(\mathbf{f_{t_{k}}},h_{i},h_{j}) * F_{tactic}[i,j,k]$ for all i, j, and k, giving $E_{risk}$, also of size $h \times h \times t$. $E_{risk}$ represents the re-weighting of the system-wide tactic model $F_{attack}$ by the local probability of observing behavioral features of tactics in normal data. Another view is that $E_{risk}$ provides a model of the worst-case behavior of an attacker attempting to minimize his or her likelihood of detection, e.g., an optimal adversary.
+
+By summing $E_{risk}$ along its third (tactic) axis to estimate all tactics, then rescaling every row by its sum, we derive a model of host vulnerability, $M_{risk}$. This model is conveniently a first-order Markov model lending itself to Markovian analyses (Winston, 1994). The utility of $M_{risk}$ is that it integrates expected attacker behavior with the distribution of regular system behavior to derive a model of relative attack-risk; further, its construction incorporates the flow of information between all hosts, giving a system-wide measure of risk.
+
+Finally, the stationary distribution of $M_{risk}$ gives a well-defined metric of host-attack risk. From Markov chain theory, the distribution is calculated by repeated exponentiation, where $M_{risk}^{k} = \Pi$, as $k \rightarrow \infty$. The resulting $\Pi$ is an $h \times h$ matrix with identical rows ${\pi_{0}=\pi_{1}=...=\pi_{h}=\pi},\pi \subset R^{h}$, for which the entries of $\pi$ encode the stationary probability of attack features on a specific host, $p(f_{attack},host=h_{i}) = \pi_{i}$, where $\pi_{i}$ denotes the ith element of $\pi$. Despite the asymptotic condition, convergence to π occurs rapidly for small $k$; in this work $k \leq 7$ was sufficient. The full algorithm is shown in Algorithm 1.
+
+\begin{algorithm}
+\caption{Markovian ATT\&CK risk estimation}\label{alg:tomato}
+\begin{algorithmic}[1]
+\Procedure{Tomato}{$P_{cpd}, D_{tactic}, G_{system}$}
+\State $s \gets generateSequences(D_{tactic}, G_{system})$
+\State $F_{tactic} \gets buildFrequencyMatrix(s)$
+\State $E_{risk} \gets evaluate(P_{cpd}, F_{tactic})$
+\State $M_{risk} \gets normalize(E_{risk})$
+\While{$not\ converged$}
+\State $M_{risk} \gets M_{risk} * M_{risk}$
+\EndWhile\label{endwhile}
+\State $\pi \gets M^{risk}_{0,*}$ \Comment{Take any row of $M_{risk}$}
+\State \textbf{return} $\pi$
+\EndProcedure
+\end{algorithmic}
+\end{algorithm}
+
+Given the process for generating attack sequences from $D_{attack}$, and our empirically-derived probabilistic model $P_{cpd}$ of observing attack features on or between hosts, the stationary distribution $\pi$ represents a system-wide metric of host-level attack risk. Intuitively it represents how 'normal' attack features appear on the network under regular conditions, hence behavioral vulnerability. The measure is informative for determining high-risk hosts and links, and thereby optimizing sensor allocation or other attack mitigation strategies. Separate $\pi_{t_{k}}$ can also be evaluated for subsets of tactics $t_{k}$, providing instead a measure of risk for specific tactics; this is done by selecting only the corresponding entries of $E_{risk}$ along its third (tactic) axis when summing and normalizing this matrix to derive $M_{risk}$.
+
+\color{black}
+
+
+
+\subsection{Recomputing}
+
+% BAYESIAN ANALYSIS TO ADDRESS PREVIOUSLY KNOWN ATTACKS....
+\section{Case-Study}
+The proposed data has been evaluate on the Smart City Testbed at WSU. 
+
+\subsection{Testbed Evaluation}
+The proposed techniques have been implemented and analyzed in the Smart City Testbed at WSU. Within the testbed, a simplified SCADA distribution system model will be used as a case study throughout this paper as demonstrated in Figure~\ref{testbed}a). This system includes two subsystems, a control center and a substation, which are interconnected through a wide area network (WAN). The control center includes a SCADA server, distribution management system, and a human machine interface (HMI). The substation includes a gateway device (which aggregates data from the relays) and 8 protection relays.  VPNs are used to protect the remote communications and unauthorized external connections. The SCADA server and substation gateway communicate over the DNP3 protocol, while the gateways and relays communicate over IEC 61850 (MMS). Furthermore, the DMS and HMI both communicate to the SCADA server over vendor propriety are protocols. The graph model associated with the system is defined in Figure~\ref{testbed}b).
+
+\begin{figure}
+    \centering
+    \includegraphics[width=.8\columnwidth]{ics_layers}
+    \label{testbed}
+    \caption{ICS Test System}
+\end{figure}
+
+\subsubsection{Monitoring platform}
+In addition to the base system, a variety of security monitoring techniques were integrated into the environment to verify the security of the system. Table~\ref{monitoring_deploy} documents the various monitoring techniques deployed within the test environment and the systems that they're deployed on.
+The following table identifies the various security monitoring techniques deployed across the environments.
+
+\begin{table}
+\centering
+\caption{Deployed Monitoring Sources}
+\label{monitoring_deploy}
+\begin{tabular}{|l|l|}\hline
+        & Systems and Monitoring Techniques   \\ \hline
+Network & $s_{sw1} = \{ Netflow \}, s_{fw1} = \{ IDS \},$  \\
+		& $s_{fw2} = \{ IDS \}, s_{sw2} = \{ Netflow \}$   \\\hline
+System  & $s_{hmi} = \{ log \}, s_{scada} = \{ log \}, $   \\ 
+		& $s_{eng} = \{ log \}, s_{gw} = \{ log \}, $      \\
+        & $s_{relay1...relay8} = \empty$  \\ \hline
+	
+\end{tabular}
+\end{table}
+
+To collect the data from the various mechanisms, we have develop an security monitoring platform built on the ELK Stack (Elasticsearch, Logstash, Kibana) as demonstrated in Fig. XYZ. In this deployment, Logstash is used to collect and ingest the data from the various devices and utilizes custom INSERT SOMETHING HERE for each monitoring source. The data is then indexed  by Elasticsearch. Finally Kibana interfaces have been defined to provide visualization and querying of the Elasticsearch indices. 
+
+
+\begin{enumerate}
+\item Analysis for different (1) sensor sets
+\end{enumerate}
+
+
+\subsubsection{Test Case Data}
+For the test-case, data has been collected for a period of \color{red} XYZ days \color{black} based on normal system operations. Data was collected across all the security monitoring data sources identified in the previous section. This section will document the base statistical models developed during the testbed analysis. 
+
+\color{red}
+INSERT BASELINE DATA
+\color{black}
+
+\subsubsection{Attack Sequences}
+The overall effectiveness of a monitoring strategy will be evaluated against number of randomly generated attack sequences. The set of 1000 sequences based on the algorithm generated in Section \color{red} XYZ \color{black}. Of the 1000 attack sequences, they have an average of 11 attack techniques. Of the 11,040 generated techniques, they are distributed as follows: 
+
+\begin{itemize}
+\item Discover: 4190
+\item Privilege Escalation: 2516
+\item Lateral Movement: 3338
+\item Execution: 996
+\end{itemize}
+
+\subsubsection{Results}
+
+
+\color{red}
+For each, identify (i) Relative Entropy and (ii) Total Entropy 
+\begin{itemize}
+\item Networks (NF)
+\item Network-Only (NF+Bro)
+\item Log + Network (ALL)
+\item All
+\end{itemize}
+
+\color{black}
+
+\begin{table}
+\centering
+\caption{Markovian System Risk Analysis (This is out of place and can be moved when it has a home)}
+\label{tab:results}
+\begin{tabular}{|l|l|r|}
+\hline
+\rowcolor[HTML]{EFEFEF}
+\textbf{Device} & \textbf{Host Ip} & $\mathbf{p(f_{attack}|host)}$ \\\hline
+COM600	&	192.168.2.10   & 0.37	\\\hline
+Relay 1	&	192.168.2.101  & 0.11	\\\hline
+Relay 2	&	192.168.2.102  & 0.11	\\\hline
+Relay 3	&	192.168.2.103  & 0.00	\\\hline
+Relay 4	&	192.168.2.104  & 0.02	\\\hline
+Relay 5	&	192.168.2.105  & 0.00	\\\hline
+Relay 6	&	192.168.2.106  & 0.00	\\\hline
+Relay 7	&	192.168.2.107  & 0.00	\\\hline
+Relay 8	&	192.168.2.108  & 0.11	\\\hline
+SCADA/HMI &	192.168.0.11   & 0.25	\\\hline
+\end{tabular}
+\end{table}
+
+
+
+
+\section{Discussion}
+\begin{enumerate}
+\item System Wide Bayesian Analysis
+\item ICS ATT\&CK
+\item Data Modeling challenges
+\end{enumerate}
+
+
+\section{Conclusion}
+
+XXXXXXXX XXXXXXXX XXXXXXXX XXXXXXXX XXXXXXXX XXXXXXXX 
+XXXXXXXX XXXXXXXX XXXXXXXX XXXXXXXX XXXXXXXX XXXXXXXX 
+XXXXXXXX XXXXXXXX XXXXXXXX XXXXXXXX XXXXXXXX XXXXXXXX 
+XXXXXXXX XXXXXXXX XXXXXXXX XXXXXXXX XXXXXXXX XXXXXXXX 
+XXXXXXXX XXXXXXXX XXXXXXXX XXXXXXXX XXXXXXXX XXXXXXXX 
+XXXXXXXX XXXXXXXX XXXXXXXX XXXXXXXX XXXXXXXX XXXXXXXX 
+XXXXXXXX XXXXXXXX XXXXXXXX XXXXXXXX XXXXXXXX XXXXXXXX 
+
+
+\bibliographystyle{IEEEtran.bst}
+\bibliography{main} 
+
+\end{document}
+
+%%%%%%%%%%%%%%%%%%%%
+% OLD
+%%%%%%%%%%%%%%%%%%%%
+
+%\color{gray}
+%Furthermore, $NE$ defines the set of network events, while $SE$ defines the set of system events. Attack model is defined as the directed graph (E,N) 
+%\begin{itemize}
+%\item $E$ = $\{Disc, Priv\_Esc, Lat\_Mov, Exec\}$
+%\item $N$ = (Disc,Disc), (Disc, Priv\_Esc), (Disc, Lat\_Mov), (Disc, Exec), (Priv\_Esc, Disc), (Lat\_Mov, Disc), (Priv\_Esc, Lat\_Mov), (Lat\_Mov, Priv\_Esc)  
+%\end{itemize}
+%\color{black}
+
+%\subsection{Attack Sequence Generation}
+%To generate the attack sequences, we assume an attacker will start from a remote system and will target some system that enables the ability to manipulate system controls. The attack sequence will consist of the set of systems targeted in each attack phase, along with the tactic and technique deployed in the phase based on the ATT\&CK.
+
+%\begin{figure}
+%  \caption{Attack Tactic Sequence Markov Chain}
+%  \centering
+%    \includegraphics[width=0.4\textwidth]{mm}
+%  \label{markov}
+%\end{figure}
+
+%While ATT\&CK includes a large number of tactics, we focus on a simplified set which are imperative to attack propagation, specifically {\it Discover}, {\it Privilege Escalation}, {\it Lateral Movement}, {\it Execution}. The tactic propagation sequences are then randomly generated by a Markov chain, as defined in Fig.~\ref{markov}. The model assumes that each state has an equal probability of advancing to each connected state. Furthermore, the model assumes that once the {\it Execution} stage is a terminal stage and the attack will concluded.  
+
+%Algorithm~\ref{AttackAlg} defines the approach used to generate the attack sequence from the system graph ($C$) and Markov chain ($V$). The algorithm continually selects new tactics in a loop, until it finds an ``Execution'' tactic and also has compromised a node in the $target\_set$, which is its final goal. When this happens the attack sequence is finished. The algorithm will propagate to a new node, whenever it selects a ``LateralMovement'' tactic, which includes a node that is adjacent to a previously connected node. Both the ``Discovery'' and ``PrivilegeEscalation'' phases will remain on the current node in the attack path. Also, the number of ``PrivilegeEscalation'' Phases is limited to one on each compromised system to represent moving from unprivileged to privileged (e.g., administrator) account, but additional escalations are not generated.  Therefore, every execution of the algorithm generates a new attack sequence, which includes random targets, tactics, and techniques based on some assumed input graph model. The algorithm can then be executed multiple times to produce a large set of random sequences necessary to comprehensively evaluate a monitoring strategy.
+
+%\begin{algorithm}
+%\begin{algorithmic}
+%	\State $V \gets Markov Model$
+%    \State $C \gets Graph$
+%    \State $target\_set \gets SOMETHING $
+%    \State $curr \gets ``ext"$ 
+%    \State $att\_path, att\_seq \gets \{ \null \}$ 
+%    \While{Tactic $!=$ Execution}
+%    	\State $s \gets Markov\_Update(s)$
+%    	\If{s == Discovery}
+%        	\State $tech \gets RandTech(``Discovery")$
+%        \EndIf
+%        \If{s == PrivilegeExecution}
+%        	\If{PE==0}
+%        		\State $tech \gets RandTech(``PrivilegeExecution")$
+%                \State $PE=1$
+%            \EndIf
+%        \EndIf
+%        \If{s == LateralMovement}
+%       	\State $tech \gets RandTech(``LateralMovement")$
+%            \State $PE=1$
+%           \State $avail = avail \cup adjacent\_nodes(curr)$
+%            \State $avail = avail \backslash att\_path $
+%            \State $curr = random(avail)$
+%			\State $att\_path.append(curr)$          
+%        \EndIf
+%        \If{s == Execution}
+%        	\If{$att\_path - target\_set != Null$}
+%            	\State $tech \gets RandTech(``Execution")$
+%            \Else
+%            	\State $Next$
+%            \EndIf
+%        \EndIf
+%        \State $att\_seq.append(target, tech)$
+%    \EndWhile \\
+%    \Return{$att\_seq$}
+%\end{algorithmic}
+%\caption{Attack Sequence Generation Algorithm}
+%\label{AttackAlg}
+%\end{algorithm}
+%\color{red} TODO INITIAL ACCESS!!!\color{black}
+
+
+
+%\subsection{Attack Sequence Information Gain}
+%\color{gray}
+%The effectiveness of a monitoring strategy will be evaluated based on the information gain of the various attack sequence in relation to the entropy of the normal data collected by the various monitoring mechanisms.  To quantify the information gain, we will the Kullback-Leibler (KL) divergence technique for computing relative entropy between then normal data set collected from the various monitored data, along with the same data set with an added event related to the feature of that attack technique, The KL divergence is defined in the following equation with the following definition: 
+%\begin{itemize}
+%\item $B_{T,N}$  = Probability distribution model of feature $N$ for technique $T$,
+%\item $B'_{T,N}$ = $B_{T,N} \cap t$ Probability distribution model of feature $N$ for technique $T$, with technique $t$ added to the distribution.
+%\end{itemize}
+
+%$$ D_{KL}(B'_{T,N}|B_{T,N})= -\sum_{i} B'_{T,N}(i) log \frac{B'_{T,N}(i)}{B_{T,N}(i)} $$
+
+%While the previous equation demonstrates the divergence from a single feature, the metric will be expanded to evaluate the relative entropy from an entire attack sequence, which includes multiple attack techniques which can be identified my multiple sensors. Therefore, the relative entropy for an attack sequence will be determined by summing the KL divergence for each technique in the attack sequences, such that the detection for a single attack sequence  SEQUENCE, $S$ is defined as $D_{KL}^S = \sum_{i \in  S} D_{KL}(B'_{i,N}|B_{i,N})$
+
+%Since the proposed KL divergence method will be used across all different attack techniques, the implementation will vary depend on the different data sources. The remainder of the sections 
+
+%\color{black}
+
+

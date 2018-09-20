@@ -425,7 +425,7 @@ def main():
 				"192.255.255.0"]
 	
 	hostnameConversionTable = {
-								"HP-B53-01": "192.168.0.11",	#scada 
+								"HP-B53-01": "192.168.0.11",	#scada + hmi
 								"COM600-PC": "192.168.2.10"		#abb substation mgt unit; aka 'rtu'
 							}
 	
