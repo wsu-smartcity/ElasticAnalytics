@@ -128,7 +128,10 @@ class ModelBuilder(object):
 																	level2Filter=options,
 																	size=0)
 			jsonBucket = self._esClient.aggregate(indexPattern, qDict)
-			#print(json.dumps(jsonBucket))
+			if "statusCode" in jsonBucket.keys() and jsonBucket["statusCode"] in [502,"502"]:
+				raise Exception("Bad gateway 502 error, elastic server likely down. Returned json: "+str(jsonBucket))
+			
+			print(json.dumps(jsonBucket))
 			aggDict_Ipv4 = jsonBucket["aggregations"]
 			failCount_Ipv4, docErrors_Ipv4, otherCount_Ipv4 = self._getAggResponseStats(jsonBucket)
 		
